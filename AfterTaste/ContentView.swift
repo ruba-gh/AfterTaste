@@ -8,14 +8,82 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var purchaseVM = PurchaseViewModel()
+    @State private var selectedTab = 0
+
+    init() {
+        let appearance = UITabBarAppearance()
+
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor.black
+
+        appearance.shadowColor = UIColor.white.withAlphaComponent(0.15)
+
+        let normalColor = UIColor.white
+        let selectedColor = UIColor(named: "Color") ?? UIColor.systemPurple
+
+        appearance.stackedLayoutAppearance.normal.iconColor = normalColor
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: normalColor
+        ]
+
+        appearance.stackedLayoutAppearance.selected.iconColor = selectedColor
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: selectedColor
+        ]
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+        UITabBar.appearance().unselectedItemTintColor = normalColor
+    }
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("AfterTaste")
+        TabView(selection: $selectedTab) {
+            Purchase(viewModel: purchaseVM)
+                .tabItem {
+                    Image(systemName: "arrow.up.right.and.arrow.down.left")
+                    Text("Cost")
+                }
+                .tag(0)
+
+            PlaceholderScreen(title: "Decisions")
+                .tabItem {
+                    Image(systemName: "list.clipboard.fill")
+                    Text("Decisions")
+                }
+                .tag(1)
+
+            PlaceholderScreen(title: "Goals")
+                .tabItem {
+                    Image(systemName: "target")
+                    Text("Goals")
+                }
+                .tag(2)
+
+            PlaceholderScreen(title: "Profile")
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("Profile")
+                }
+                .tag(3)
         }
-        .padding()
+        .tint(Color("Color"))
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct PlaceholderScreen: View {
+    let title: String
+
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            Text(title)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(.white)
+        }
     }
 }
 
