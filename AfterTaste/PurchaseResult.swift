@@ -7,6 +7,7 @@
 import SwiftUI
 
 struct PurchaseResult: View {
+    @State private var showCoolDownPopup = false
     @ObservedObject var viewModel: PurchaseViewModel
 
     private let timerColor = Color(
@@ -26,13 +27,20 @@ struct PurchaseResult: View {
                     .padding(.top, 40)
                     .padding(.bottom, 58)
             }
+
+            if showCoolDownPopup {
+                coolDownPopup
+            }
         }
         .navigationTitle(viewModel.resultTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .preferredColorScheme(.dark)
     }
+
+    // MARK: - Result Card
 
     private var resultCard: some View {
         VStack(spacing: 0) {
@@ -126,6 +134,8 @@ struct PurchaseResult: View {
         )
     }
 
+    // MARK: - Time Counter
+
     private var timeCounter: some View {
         HStack(alignment: .top, spacing: 8) {
             timeBox(
@@ -185,6 +195,8 @@ struct PurchaseResult: View {
             .padding(.top, 9)
     }
 
+    // MARK: - Choices
+
     private func choiceRow(
         leftTitle: String,
         leftSelected: Bool,
@@ -243,6 +255,8 @@ struct PurchaseResult: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Urgency
+
     private var urgencySlider: some View {
         VStack(spacing: 0) {
             HStack {
@@ -262,6 +276,8 @@ struct PurchaseResult: View {
             .tint(Color("Color"))
         }
     }
+
+    // MARK: - Reason
 
     private var reasonField: some View {
         HStack {
@@ -286,6 +302,8 @@ struct PurchaseResult: View {
             )
         )
     }
+
+    // MARK: - Life Expectancy
 
     private var lifeExpectancyRow: some View {
         HStack(spacing: 12) {
@@ -336,9 +354,14 @@ struct PurchaseResult: View {
         }
     }
 
+    // MARK: - Action Buttons
+
     private var actionButtons: some View {
         HStack(spacing: 10) {
             Button("Save for later") {
+                withAnimation(.easeInOut(duration: 0.20)) {
+                    showCoolDownPopup = true
+                }
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
@@ -347,6 +370,7 @@ struct PurchaseResult: View {
             .clipShape(Capsule())
 
             Button("Buy anyway") {
+                // نضيف الإجراء لاحقًا
             }
             .foregroundStyle(Color("Color"))
             .frame(maxWidth: .infinity)
@@ -357,6 +381,74 @@ struct PurchaseResult: View {
         }
         .font(.system(size: 16, weight: .medium))
     }
+
+    // MARK: - Cool Down Popup
+
+    private var coolDownPopup: some View {
+        ZStack {
+            // تعتيم الصفحة الخلفية
+            Color.black.opacity(0.78)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Text("Saved to your cool-down list")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.top, 30)
+
+                Text(
+                    "Come back in 24 hours and decide with a\nclearer mind."
+                )
+                .font(.system(size: 14))
+                .foregroundStyle(.white.opacity(0.80))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.top, 5)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.20)) {
+                        showCoolDownPopup = false
+                    }
+                    // لاحقًا نضيف الانتقال إلى Drafts داخل Decisions
+                } label: {
+                    Text("Ok!")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color("Color"))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 34)
+                .padding(.top, 26)
+                .padding(.bottom, 24)
+            }
+            .frame(maxWidth: 350)
+            .background(
+                // لون داكن ثابت لبطاقة البوب‑أب
+                Color(red: 0.16, green: 0.16, blue: 0.18)
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 28,
+                    style: .continuous
+                )
+            )
+            .overlay(
+                // حد خفيف لزيادة التباين مثل الصورة
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
+            .padding(.horizontal, 28)
+        }
+        .transition(
+            .opacity.combined(
+                with: .scale(scale: 0.96)
+            )
+        )
+        .zIndex(10)
+    }
 }
 
 #Preview {
@@ -364,5 +456,6 @@ struct PurchaseResult: View {
         PurchaseResult(
             viewModel: PurchaseViewModel()
         )
+        .preferredColorScheme(.dark)
     }
 }
