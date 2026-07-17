@@ -35,21 +35,29 @@ struct CooldownView: View {
                     .padding(.bottom, 28)
                 
                 // 3. محتوى القائمة يتغير حسب التبويب المختار
-                switch selectedSubTab {
-                case "Cool down":
-                    ScrollView(.vertical, showsIndicators: false) {
-                        coolDownContent
-                    }
-                case "After taste":
-                    // شاشة رغد After taste مربوطة بالموديل المشترك
-                    AfterTasteView()
-                case "History":
-                    // شاشة السجل المستقلة
-                    HistoryView()
-                default:
-                    // صفحة Drafts (تُبنى لاحقاً)
-                    ScrollView(.vertical, showsIndicators: false) {
-                        placeholderContent(for: selectedSubTab)
+                Group {
+                    switch selectedSubTab {
+                    case "Cool down":
+                        ScrollView(.vertical, showsIndicators: false) {
+                            coolDownContent
+                        }
+
+                    case "After taste":
+                        // شاشة رغد After taste مربوطة بالموديل المشترك
+                        AfterTasteView()
+
+                    case "History":
+                        // شاشة السجل المستقلة
+                        HistoryView()
+
+                    case "Drafts":
+                        // صفحة Drafts (تُبنى لاحقاً)
+                        ScrollView(.vertical, showsIndicators: false) {
+                            placeholderContent(for: "Drafts")
+                        }
+
+                    default:
+                        EmptyView()
                     }
                 }
             }
@@ -150,21 +158,51 @@ struct CooldownView: View {
     }
     
     private var topTabBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             ForEach(topTabs, id: \.self) { tab in
-                Text(tab)
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(selectedSubTab == tab ? Color("Button") : Color("Button").opacity(0.4))
-                    .foregroundColor(selectedSubTab == tab ? .white : .gray)
-                    .clipShape(Capsule())
-                    .onTapGesture {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         selectedSubTab = tab
                     }
+                } label: {
+                    Text(tab)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(
+                            selectedSubTab == tab
+                                ? .white
+                                : .white.opacity(0.72)
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .background {
+                            if selectedSubTab == tab {
+                                Capsule()
+                                    .fill(
+                                        Color(
+                                            red: 89 / 255,
+                                            green: 89 / 255,
+                                            blue: 95 / 255
+                                        )
+                                    )
+                                    .padding(2)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
             }
-            Spacer()
         }
+        .padding(2)
+        .frame(height: 36)
+        .background(
+            Capsule()
+                .fill(
+                    Color(
+                        red: 28 / 255,
+                        green: 28 / 255,
+                        blue: 30 / 255
+                    )
+                )
+        )
     }
 }
 
