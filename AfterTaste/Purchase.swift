@@ -112,4 +112,5 @@ struct Purchase: View {
 
 #Preview {
     Purchase(viewModel: PurchaseViewModel())
+        .environmentObject(CooldownViewModel())
 }

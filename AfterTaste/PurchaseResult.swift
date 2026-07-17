@@ -8,9 +8,8 @@ import SwiftUI
 
 struct PurchaseResult: View {
     @State private var showCoolDownPopup = false
-    @State private var selectedItem: CooldownItem?
     @State private var goToCooldown = false
-    @StateObject private var cooldownViewModel = CooldownViewModel()
+    @EnvironmentObject var cooldownViewModel: CooldownViewModel
     @ObservedObject var viewModel: PurchaseViewModel
 
     private let timerColor = Color(
@@ -41,6 +40,9 @@ struct PurchaseResult: View {
         .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .preferredColorScheme(.dark)
+        .navigationDestination(isPresented: $goToCooldown) {
+            CooldownView()
+        }
     }
 
     // MARK: - Result Card
@@ -363,12 +365,6 @@ struct PurchaseResult: View {
         HStack(spacing: 10) {
             Button("Save for later") {
 
-                let item = CooldownItem(
-                    itemName: viewModel.resultTitle,
-                    price: viewModel.resultPrice,
-                    createdAt: Date(),
-                    expiresAt: Date().addingTimeInterval(60 * 30)
-                )
                 cooldownViewModel.addItem(
                     name: viewModel.resultTitle,
                     price: viewModel.resultPrice,
@@ -425,7 +421,7 @@ struct PurchaseResult: View {
                     withAnimation(.easeInOut(duration: 0.20)) {
                         showCoolDownPopup = false
                     }
-                    // لاحقًا نضيف الانتقال إلى Drafts داخل Decisions
+                    goToCooldown = true
                 } label: {
                     Text("Ok!")
                         .font(.system(size: 17, weight: .medium))
@@ -474,4 +470,5 @@ struct PurchaseResult: View {
         )
         .preferredColorScheme(.dark)
     }
+    .environmentObject(CooldownViewModel())
 }

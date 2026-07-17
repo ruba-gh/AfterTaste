@@ -8,6 +8,8 @@ import SwiftUI
 
 struct Setup: View {
 
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+
     @State private var hourlyRate: String = ""
     @State private var showIncomeEstimator = false
 
@@ -236,7 +238,7 @@ struct Setup: View {
     }
     private var finishButton: some View {
         Button {
-            
+            didFinishOnboarding = true
         } label: {
             Text("Finish Setup")
                 .font(.system(size: 16, weight: .semibold))

@@ -9,10 +9,25 @@ import SwiftUI
 
 @main
 struct AfterTasteApp: App {
+    @StateObject private var cooldownViewModel = CooldownViewModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environmentObject(cooldownViewModel)
                 .preferredColorScheme(.dark)
+        }
+    }
+}
+
+struct RootView: View {
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+
+    var body: some View {
+        if didFinishOnboarding {
+            ContentView()
+        } else {
+            OnboardingStart()
         }
     }
 }

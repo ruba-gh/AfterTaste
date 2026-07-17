@@ -8,6 +8,8 @@ import SwiftUI
 
 struct OnboardingStart: View {
 
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+
     var body: some View {
         NavigationStack {
 
@@ -67,7 +69,7 @@ struct OnboardingStart: View {
                         .padding(.top, 8)
 
                         Button {
-
+                            didFinishOnboarding = true
                         } label: {
                             Text("I'll do it later")
                                 .font(.system(size: 14))

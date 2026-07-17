@@ -1,3 +1,4 @@
+
 //
 //  CooldownView.swift
 //  AfterTaste
@@ -8,8 +9,9 @@
 import SwiftUI
 
 struct CooldownView: View {
-    @StateObject private var viewModel = CooldownViewModel()
+    @EnvironmentObject var viewModel: CooldownViewModel
     @State private var selectedSubTab: String = "Cool down"
+    @State private var selectedItem: CooldownItem?
     
     // التبويبات الأربعة الظاهرة في الفيجما بالرأس
     let topTabs = ["Cool down", "After taste", "History", "Drafts"]
@@ -32,62 +34,96 @@ struct CooldownView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 28)
                 
-                // 3. محتوى القائمة المفصلة حسب التصميم
+                // 3. محتوى القائمة يتغير حسب التبويب المختار
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
-                        
-                        // قسم الـ Decide
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Decide")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 4)
-                            
-                            if viewModel.readyItems.isEmpty {
-                                Text("Nothing ready for decision")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.darkGrayText)
-                                    .padding(.horizontal, 4)
-                            } else {
-                                ForEach(viewModel.readyItems) { item in
-                                    FigmaItemCard(item: item, isCooling: false, onRemove: {
-                                        viewModel.removeItem(item)
-                                    })
-                                }
-                            }
-                        }
-                        
-                        // قسم الـ Cooling Down
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Cooling Down")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 4)
-                            
-                            if viewModel.coolingItems.isEmpty {
-                                Text("No items cooling down")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.darkGrayText)
-                                    .padding(.horizontal, 4)
-                            } else {
-                                ForEach(viewModel.coolingItems) { item in
-                                    FigmaItemCard(item: item, isCooling: true, onRemove: {
-                                        viewModel.removeItem(item)
-                                    })
-                                }
-                            }
-                        }
+                    switch selectedSubTab {
+                    case "Cool down":
+                        coolDownContent
+                    default:
+                        // صفحات After taste / History / Drafts (تُبنى لاحقاً)
+                        placeholderContent(for: selectedSubTab)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 100) // أمان للـ Bottom Bar
                 }
             }
         }
         .navigationBarHidden(true)
+        .sheet(item: $selectedItem) { item in
+            DecisionSheet(item: item)
+                .environmentObject(viewModel)
+        }
     }
     
+    // MARK: - Cool Down Content
+
+    private var coolDownContent: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            VStack(alignment: .leading, spacing: 24) {
+
+                // قسم الـ Decide
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Decide")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 4)
+
+                    if viewModel.readyItems.isEmpty {
+                        Text("Nothing ready for decision")
+                            .font(.system(size: 13))
+                            .foregroundColor(.darkGrayText)
+                            .padding(.horizontal, 4)
+                    } else {
+                        ForEach(viewModel.readyItems) { item in
+                            FigmaItemCard(item: item, isCooling: false, onRemove: {
+                                viewModel.removeItem(item)
+                            }, onDecide: {
+                                selectedItem = item
+                            })
+                        }
+                    }
+                }
+
+                // قسم الـ Cooling Down
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Cooling Down")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 4)
+
+                    if viewModel.coolingItems.isEmpty {
+                        Text("No items cooling down")
+                            .font(.system(size: 13))
+                            .foregroundColor(.darkGrayText)
+                            .padding(.horizontal, 4)
+                    } else {
+                        ForEach(viewModel.coolingItems) { item in
+                            FigmaItemCard(item: item, isCooling: true, onRemove: {
+                                viewModel.removeItem(item)
+                            }, onDecide: {})
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 100) // أمان للـ Bottom Bar
+    }
+
+    private func placeholderContent(for tab: String) -> some View {
+        VStack(spacing: 8) {
+            Text("\(tab)")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white.opacity(0.8))
+
+            Text("Coming soon")
+                .font(.system(size: 13))
+                .foregroundColor(.darkGrayText)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 120)
+    }
+
     // MARK: - Subviews المجهزة من الفيجما
-    
+
     private var headerSection: some View {
         HStack {
             Spacer()
@@ -112,7 +148,7 @@ struct CooldownView: View {
                     .font(.system(size: 12, weight: .medium))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(selectedSubTab == tab ? Color.afterTasteButton : Color.afterTasteButton.opacity(0.4))
+                    .background(selectedSubTab == tab ? Color("Button") : Color("Button").opacity(0.4))
                     .foregroundColor(selectedSubTab == tab ? .white : .gray)
                     .clipShape(Capsule())
                     .onTapGesture {
@@ -130,6 +166,7 @@ struct FigmaItemCard: View {
     let item: CooldownItem
     let isCooling: Bool
     var onRemove: () -> Void
+    var onDecide: () -> Void = {}
     
     var body: some View {
         HStack(spacing: 14) {
@@ -152,23 +189,30 @@ struct FigmaItemCard: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .foregroundColor(.white)
-                    .background(Color.afterTasteButton.opacity(0.5))
+                    .background(Color("Button").opacity(0.5))
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(Color.afterTastePurple.opacity(0.3), lineWidth: 1)
+                            .stroke(Color("Color").opacity(0.3), lineWidth: 1)
                     )
             } else {
-                // زر Decide باللون البنفسجي المعتمد في التطبيق
-                Button(action: {
-                    // تفاعل اتخاذ القرار
-                }) {
+                // زر Decide بالتدرج البنفسجي إلى البرتقالي المطابق للفيجما
+                Button(action: onDecide) {
                     Text("Decide")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(Color.afterTastePurple)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Color("Color"),
+                                    Color(red: 0.89, green: 0.44, blue: 0.30)
+                                ],
+                                startPoint: .bottomLeading,
+                                endPoint: .topTrailing
+                            )
+                        )
                         .cornerRadius(14)
                 }
             }
@@ -176,7 +220,7 @@ struct FigmaItemCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(height: 52)
-        .background(Color.afterTasteButton) // نفس لون الـ Button من لوحة الأصول بالفيجما
+        .background(Color("Button")) // نفس لون الـ Button من لوحة الأصول بالفيجما
         .cornerRadius(12)
         .contextMenu {
             Button(role: .destructive, action: onRemove) {
@@ -197,12 +241,6 @@ struct FigmaItemCard: View {
 
 // MARK: - لوحة الألوان المطابقة للـ Assets المرفقة بالملي
 extension Color {
-    // اللون البنفسجي للزر الرئيسي (Button 2 / Color)
-    static let afterTastePurple = Color(red: 0.58, green: 0.52, blue: 0.82)
-    
-    // لون خلفية البطاقات والأزرار الغامقة الرمادية (Button)
-    static let afterTasteButton = Color(red: 0.16, green: 0.16, blue: 0.18)
-    
     // نصوص رمادية داكنة للحالات الفارغة
     static let darkGrayText = Color(red: 0.4, green: 0.4, blue: 0.4)
 }
@@ -210,9 +248,5 @@ extension Color {
 // MARK: - Preview
 #Preview {
     CooldownView()
-}
-
-// MARK: - Preview
-#Preview {
-    CooldownView()
+        .environmentObject(CooldownViewModel())
 }

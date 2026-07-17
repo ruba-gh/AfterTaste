@@ -46,7 +46,9 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            PlaceholderScreen(title: "Decisions")
+            NavigationStack {
+                CooldownView()
+            }
                 .tabItem {
                     Image(systemName: "list.clipboard.fill")
                     Text("Decisions")
@@ -89,4 +91,5 @@ private struct PlaceholderScreen: View {
 
 #Preview {
     ContentView()
+        .environmentObject(CooldownViewModel())
 }

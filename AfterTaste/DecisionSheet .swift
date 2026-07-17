@@ -94,6 +94,12 @@ struct DecisionSheet: View {
                     .background(Color("Button"))
                     .cornerRadius(22)
 
+                    // MARK: Cooldown Waited
+
+                    Text("You waited \(CooldownManager.formattedTime(from: Date().timeIntervalSince(item.createdAt)))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+
                     // MARK: Explain
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -137,7 +143,7 @@ struct DecisionSheet: View {
 
                         Button {
 
-                            // Buy action
+                            cooldownViewModel.removeItem(item)
                             dismiss()
 
                         } label: {
