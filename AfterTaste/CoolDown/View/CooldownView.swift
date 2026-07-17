@@ -35,13 +35,28 @@ struct CooldownView: View {
                     .padding(.bottom, 28)
                 
                 // 3. محتوى القائمة يتغير حسب التبويب المختار
-                ScrollView(.vertical, showsIndicators: false) {
+                Group {
                     switch selectedSubTab {
                     case "Cool down":
-                        coolDownContent
+                        ScrollView(.vertical, showsIndicators: false) {
+                            coolDownContent
+                        }
+
+                    case "After taste":
+                        AfterTasteView()
+
+                    case "History":
+                        ScrollView(.vertical, showsIndicators: false) {
+                            placeholderContent(for: "History")
+                        }
+
+                    case "Drafts":
+                        ScrollView(.vertical, showsIndicators: false) {
+                            placeholderContent(for: "Drafts")
+                        }
+
                     default:
-                        // صفحات After taste / History / Drafts (تُبنى لاحقاً)
-                        placeholderContent(for: selectedSubTab)
+                        EmptyView()
                     }
                 }
             }
@@ -142,21 +157,51 @@ struct CooldownView: View {
     }
     
     private var topTabBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             ForEach(topTabs, id: \.self) { tab in
-                Text(tab)
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(selectedSubTab == tab ? Color("Button") : Color("Button").opacity(0.4))
-                    .foregroundColor(selectedSubTab == tab ? .white : .gray)
-                    .clipShape(Capsule())
-                    .onTapGesture {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         selectedSubTab = tab
                     }
+                } label: {
+                    Text(tab)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(
+                            selectedSubTab == tab
+                                ? .white
+                                : .white.opacity(0.72)
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .background {
+                            if selectedSubTab == tab {
+                                Capsule()
+                                    .fill(
+                                        Color(
+                                            red: 89 / 255,
+                                            green: 89 / 255,
+                                            blue: 95 / 255
+                                        )
+                                    )
+                                    .padding(2)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
             }
-            Spacer()
         }
+        .padding(2)
+        .frame(height: 36)
+        .background(
+            Capsule()
+                .fill(
+                    Color(
+                        red: 28 / 255,
+                        green: 28 / 255,
+                        blue: 30 / 255
+                    )
+                )
+        )
     }
 }
 
