@@ -445,37 +445,126 @@ private struct ThemeSelector: View {
 // MARK: - Hourly Rate Screen
 
 private struct HourlyRateSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
 
     @AppStorage("afterTaste.hourlyRate")
-    private var hourlyRate: Double = 0
+    private var savedHourlyRate: Double = 0
+
+    @AppStorage("afterTaste.incomeAmount")
+    private var incomeAmount: Double = 0
+
+    @AppStorage("afterTaste.workValue")
+    private var workValue: Double = 8
+
+    @AppStorage("afterTaste.incomePeriod")
+    private var incomePeriodValue =
+        IncomePeriod.monthly.rawValue
+
+    @AppStorage("afterTaste.workTimeUnit")
+    private var workTimeUnitValue =
+        WorkTimeUnit.hours.rawValue
+
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case amount
+        case workValue
+    }
+
+    private var incomePeriod: IncomePeriod {
+        IncomePeriod(rawValue: incomePeriodValue)
+        ?? .monthly
+    }
+
+    private var workTimeUnit: WorkTimeUnit {
+        WorkTimeUnit(rawValue: workTimeUnitValue)
+        ?? .hours
+    }
+
+    private var estimatedHourlyRate: Double {
+        incomePeriod.hourlyRate(
+            income: incomeAmount,
+            workValue: workValue,
+            unit: workTimeUnit
+        )
+    }
 
     var body: some View {
         ZStack {
-            Color(uiColor: .systemBackground)
+            Color.black
                 .ignoresSafeArea()
 
-            VStack(
-                alignment: .leading,
-                spacing: 12
+            ScrollView(
+                .vertical,
+                showsIndicators: false
             ) {
-                Text("Your hourly rate")
-                    .font(
-                        .system(
-                            size: 16,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundStyle(.secondary)
+                VStack(
+                    alignment: .leading,
+                    spacing: 0
+                ) {
+                    customNavigationBar
 
-                HStack(spacing: 10) {
-                    TextField(
-                        "0",
-                        value: $hourlyRate,
-                        format:
-                            .number
-                            .precision(
-                                .fractionLength(0...2)
-                            )
+                    introSection
+                        .padding(.top, 14)
+
+                    incomePeriodSection
+                        .padding(.top, 36)
+
+                    incomeAmountSection
+                        .padding(.top, 14)
+
+                    workTimeSection
+                        .padding(.top, 14)
+
+                    estimationSection
+                        .padding(.top, 16)
+
+                    updateButton
+                        .padding(.horizontal, 20)
+                        .padding(.top, 28)
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 120)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .toolbar(
+            .hidden,
+            for: .navigationBar
+        )
+        .toolbar {
+            ToolbarItemGroup(
+                placement: .keyboard
+            ) {
+                Spacer()
+
+                Button("Done") {
+                    focusedField = nil
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Navigation
+
+    private var customNavigationBar: some View {
+        ZStack {
+            Text("Income")
+                .font(
+                    .system(
+                        size: 18,
+                        weight: .bold
+                    )
+                )
+                .foregroundStyle(.white)
+
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(
+                        systemName: "chevron.left"
                     )
                     .font(
                         .system(
@@ -483,45 +572,606 @@ private struct HourlyRateSettingsView: View {
                             weight: .semibold
                         )
                     )
-                    .keyboardType(.decimalPad)
-
-                    Text("SAR / hour")
-                        .font(
-                            .system(
-                                size: 16,
-                                weight: .medium
-                            )
-                        )
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 20)
-                .frame(height: 68)
-                .background(
-                    Color.primary.opacity(0.06)
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
+                    .foregroundStyle(.white)
+                    .frame(
+                        width: 52,
+                        height: 52
                     )
-                )
-
-                Text(
-                    """
-                    AfterTaste uses this to translate a purchase price into working time.
-                    """
-                )
-                .font(
-                    .system(size: 15)
-                )
-                .foregroundStyle(.secondary)
+                    .background(
+                        Color.white.opacity(0.07)
+                    )
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(
+                                Color.white.opacity(0.30),
+                                lineWidth: 1
+                            )
+                    }
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
             }
-            .padding(24)
         }
-        .navigationTitle("Hourly rate")
-        .navigationBarTitleDisplayMode(.inline)
+        .frame(height: 58)
+        .padding(.top, 8)
+    }
+
+    // MARK: - Introduction
+
+    private var introSection: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 10
+        ) {
+            Text(
+                "Let’s estimate your hourly income"
+            )
+            .font(
+                .system(
+                    size: 22,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(.white)
+
+            Text(
+                """
+                Tell us what you earn and how long you work to see the average value of one work hour.
+                """
+            )
+            .font(
+                .system(
+                    size: 16,
+                    weight: .regular
+                )
+            )
+            .foregroundStyle(
+                .white.opacity(0.65)
+            )
+            .fixedSize(
+                horizontal: false,
+                vertical: true
+            )
+        }
+    }
+
+    // MARK: - Income Period
+
+    private var incomePeriodSection: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 10
+        ) {
+            sectionTitle("My income is")
+
+            Menu {
+                ForEach(
+                    IncomePeriod.allCases
+                ) { period in
+                    Button {
+                        incomePeriodValue =
+                            period.rawValue
+                    } label: {
+                        if period == incomePeriod {
+                            Label(
+                                period.title,
+                                systemImage: "checkmark"
+                            )
+                        } else {
+                            Text(period.title)
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(incomePeriod.title)
+                        .font(
+                            .system(size: 18)
+                        )
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    Image(
+                        systemName: "chevron.down"
+                    )
+                    .font(
+                        .system(
+                            size: 16,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        .white.opacity(0.55)
+                    )
+                }
+                .padding(.horizontal, 32)
+                .frame(height: 74)
+                .background(cardColor)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 28,
+                        style: .continuous
+                    )
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Income Amount
+
+    private var incomeAmountSection: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 10
+        ) {
+            sectionTitle("I receive")
+
+            HStack(spacing: 8) {
+                Text("Amount")
+                    .font(
+                        .system(size: 18)
+                    )
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                TextField(
+                    "0",
+                    value: $incomeAmount,
+                    format: .number.precision(
+                        .fractionLength(0...2)
+                    )
+                )
+                .font(
+                    .system(size: 18)
+                )
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(.decimalPad)
+                .focused(
+                    $focusedField,
+                    equals: .amount
+                )
+                .frame(maxWidth: 120)
+
+                Text("$")
+                    .font(
+                        .system(size: 18)
+                    )
+                    .foregroundStyle(
+                        .white.opacity(0.50)
+                    )
+            }
+            .padding(.horizontal, 32)
+            .frame(height: 74)
+            .background(cardColor)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 28,
+                    style: .continuous
+                )
+            )
+        }
+    }
+
+    // MARK: - Work Time
+
+    private var workTimeSection: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 10
+        ) {
+            sectionTitle("For")
+
+            HStack(spacing: 8) {
+                Menu {
+                    ForEach(
+                        WorkTimeUnit.allCases
+                    ) { unit in
+                        Button {
+                            workTimeUnitValue =
+                                unit.rawValue
+                        } label: {
+                            if unit == workTimeUnit {
+                                Label(
+                                    unit.title,
+                                    systemImage: "checkmark"
+                                )
+                            } else {
+                                Text(unit.title)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(workTimeUnit.title)
+                            .font(
+                                .system(size: 18)
+                            )
+                            .foregroundStyle(.white)
+
+                        Image(
+                            systemName: "chevron.down"
+                        )
+                        .font(
+                            .system(
+                                size: 14,
+                                weight: .semibold
+                            )
+                        )
+                        .foregroundStyle(
+                            .white.opacity(0.55)
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                TextField(
+                    "8",
+                    value: $workValue,
+                    format: .number.precision(
+                        .fractionLength(0...2)
+                    )
+                )
+                .font(
+                    .system(size: 18)
+                )
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(.decimalPad)
+                .focused(
+                    $focusedField,
+                    equals: .workValue
+                )
+                .frame(maxWidth: 70)
+
+                Text(workTimeUnit.shortTitle)
+                    .font(
+                        .system(size: 18)
+                    )
+                    .foregroundStyle(
+                        .white.opacity(0.50)
+                    )
+            }
+            .padding(.horizontal, 32)
+            .frame(height: 74)
+            .background(cardColor)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 28,
+                    style: .continuous
+                )
+            )
+        }
+    }
+
+    // MARK: - Estimation
+
+    private var estimationSection: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+            sectionTitle("Estimation")
+
+            HStack(spacing: 14) {
+                VStack(
+                    alignment: .leading,
+                    spacing: 7
+                ) {
+                    Text("1 hour of your time")
+                        .font(
+                            .system(
+                                size: 17,
+                                weight: .semibold
+                            )
+                        )
+                        .foregroundStyle(.white)
+
+                    Text(calculationDescription)
+                        .font(
+                            .system(size: 14)
+                        )
+                        .foregroundStyle(
+                            Color.black.opacity(0.75)
+                        )
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Text(
+                    estimatedHourlyRate,
+                    format: .currency(
+                        code: "USD"
+                    )
+                    .precision(
+                        .fractionLength(0)
+                    )
+                )
+                .font(
+                    .system(
+                        size: 31,
+                        weight: .bold
+                    )
+                )
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 88)
+            .background {
+                LinearGradient(
+                    colors: [
+                        Color("Color")
+                            .opacity(0.95),
+
+                        Color(
+                            red: 0.95,
+                            green: 0.40,
+                            blue: 0.25
+                        )
+                    ],
+                    startPoint: .bottomLeading,
+                    endPoint: .topTrailing
+                )
+            }
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 28,
+                    style: .continuous
+                )
+            )
+        }
+    }
+
+    // MARK: - Update
+
+    private var updateButton: some View {
+        Button {
+            savedHourlyRate =
+                estimatedHourlyRate
+
+            focusedField = nil
+            dismiss()
+        } label: {
+            Text("Update")
+                .font(
+                    .system(
+                        size: 17,
+                        weight: .medium
+                    )
+                )
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    Color("Color")
+                )
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(
+            incomeAmount <= 0 ||
+            workValue <= 0
+        )
+        .opacity(
+            incomeAmount > 0 &&
+            workValue > 0
+                ? 1
+                : 0.55
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func sectionTitle(
+        _ title: String
+    ) -> some View {
+        Text(title)
+            .font(
+                .system(
+                    size: 18,
+                    weight: .semibold
+                )
+            )
+            .foregroundStyle(.white)
+    }
+
+    private var cardColor: Color {
+        Color(
+            red: 0.105,
+            green: 0.105,
+            blue: 0.115
+        )
+    }
+
+    private var calculationDescription: String {
+        switch incomePeriod {
+        case .monthly:
+            if workTimeUnit == .hours {
+                return "based on ~22 working days / month"
+            }
+
+            return "based on 8 working hours / day"
+
+        case .weekly:
+            if workTimeUnit == .hours {
+                return "based on ~5 working days / week"
+            }
+
+            return "based on 8 working hours / day"
+
+        case .daily:
+            return "based on the entered work time"
+
+        case .project:
+            return "based on the total project time"
+
+        case .yearly:
+            if workTimeUnit == .hours {
+                return "based on ~264 working days / year"
+            }
+
+            return "based on 8 working hours / day"
+        }
+    }
+}
+
+// MARK: - Income Period
+
+private enum IncomePeriod:
+    String,
+    CaseIterable,
+    Identifiable {
+
+    case monthly = "Monthly"
+    case weekly = "Weekly"
+    case daily = "Daily"
+    case project = "Per project"
+    case yearly = "Yearly"
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        rawValue
+    }
+
+    func hourlyRate(
+        income: Double,
+        workValue: Double,
+        unit: WorkTimeUnit
+    ) -> Double {
+        guard income > 0,
+              workValue > 0
+        else {
+            return 0
+        }
+
+        let dailyHours: Double = 8
+        let weeklyWorkingDays: Double = 5
+        let monthlyWorkingDays: Double = 22
+        let yearlyWorkingDays: Double = 264
+
+        switch self {
+        case .monthly:
+            switch unit {
+            case .hours:
+                return income /
+                    (
+                        monthlyWorkingDays *
+                        workValue
+                    )
+
+            case .days:
+                return income /
+                    (
+                        workValue *
+                        4.33 *
+                        dailyHours
+                    )
+            }
+
+        case .weekly:
+            switch unit {
+            case .hours:
+                return income /
+                    (
+                        weeklyWorkingDays *
+                        workValue
+                    )
+
+            case .days:
+                return income /
+                    (
+                        workValue *
+                        dailyHours
+                    )
+            }
+
+        case .daily:
+            switch unit {
+            case .hours:
+                return income / workValue
+
+            case .days:
+                return income /
+                    (
+                        workValue *
+                        dailyHours
+                    )
+            }
+
+        case .project:
+            switch unit {
+            case .hours:
+                return income / workValue
+
+            case .days:
+                return income /
+                    (
+                        workValue *
+                        dailyHours
+                    )
+            }
+
+        case .yearly:
+            switch unit {
+            case .hours:
+                return income /
+                    (
+                        yearlyWorkingDays *
+                        workValue
+                    )
+
+            case .days:
+                return income /
+                    (
+                        workValue *
+                        52 *
+                        dailyHours
+                    )
+            }
+        }
+    }
+}
+
+// MARK: - Work Time Unit
+
+private enum WorkTimeUnit:
+    String,
+    CaseIterable,
+    Identifiable {
+
+    case hours = "Hours"
+    case days = "Days"
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        rawValue
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .hours:
+            return "hrs"
+
+        case .days:
+            return "days"
+        }
     }
 }
 
