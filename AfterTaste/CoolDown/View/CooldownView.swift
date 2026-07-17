@@ -9,221 +9,207 @@ import SwiftUI
 
 struct CooldownView: View {
     @StateObject private var viewModel = CooldownViewModel()
-    @State private var selectedTab: Tab = .coolingDown
+    @State private var selectedSubTab: String = "Cool down"
     
-    enum Tab {
-        case coolingDown
-        case readyToDecide
-    }
+    // التبويبات الأربعة الظاهرة في الفيجما بالرأس
+    let topTabs = ["Cool down", "After taste", "History", "Drafts"]
     
     var body: some View {
         ZStack {
-            // Background matching forced Dark Mode
+            // الخلفية الداكنة الكاملة للتطبيق
             Color.black
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // 1. Header
-                headerView
-                    .padding(.horizontal, 20)
+                // 1. الرأس (العنوان في المنتصف مع الأيقونة اليمنى)
+                headerSection
+                    .padding(.horizontal, 24)
                     .padding(.top, 16)
-                    .padding(.bottom, 24)
-                
-                // 2. Custom Tabs
-                segmentedTabs
-                    .padding(.horizontal, 20)
                     .padding(.bottom, 20)
                 
-                // 3. Main Content List
+                // 2. قائمة التبويبات الصغيرة (Pills)
+                topTabBar
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 28)
+                
+                // 3. محتوى القائمة المفصلة حسب التصميم
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        let activeItems = selectedTab == .coolingDown ? viewModel.coolingItems : viewModel.readyItems
+                    VStack(alignment: .leading, spacing: 24) {
                         
-                        if activeItems.isEmpty {
-                            emptyStateView
-                                .padding(.top, 60)
-                        } else {
-                            ForEach(activeItems) { item in
-                                ItemCard(item: item, tab: selectedTab, onRemove: {
-                                    viewModel.removeItem(item)
-                                })
+                        // قسم الـ Decide
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Decide")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 4)
+                            
+                            if viewModel.readyItems.isEmpty {
+                                Text("Nothing ready for decision")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.darkGrayText)
+                                    .padding(.horizontal, 4)
+                            } else {
+                                ForEach(viewModel.readyItems) { item in
+                                    FigmaItemCard(item: item, isCooling: false, onRemove: {
+                                        viewModel.removeItem(item)
+                                    })
+                                }
+                            }
+                        }
+                        
+                        // قسم الـ Cooling Down
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Cooling Down")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 4)
+                            
+                            if viewModel.coolingItems.isEmpty {
+                                Text("No items cooling down")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.darkGrayText)
+                                    .padding(.horizontal, 4)
+                            } else {
+                                ForEach(viewModel.coolingItems) { item in
+                                    FigmaItemCard(item: item, isCooling: true, onRemove: {
+                                        viewModel.removeItem(item)
+                                    })
+                                }
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 100) // Padding for bottom nav safety
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 100) // أمان للـ Bottom Bar
                 }
             }
         }
         .navigationBarHidden(true)
     }
     
-    // MARK: - Subviews
+    // MARK: - Subviews المجهزة من الفيجما
     
-    private var headerView: some View {
+    private var headerSection: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Cooldown")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Text("Think twice before you spend")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.gray)
-            }
             Spacer()
             
-            // Subtle mock profile or action button to anchor the header right side
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 20, weight: .medium))
+            Text("Decision")
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
-                .frame(width: 40, height: 40)
-                .background(Color(.systemGray6))
-                .clipShape(Circle())
-        }
-    }
-    
-    private var segmentedTabs: some View {
-        HStack(spacing: 0) {
-            tabButton(title: "Cooling Down", count: viewModel.coolingItems.count, isActive: selectedTab == .coolingDown) {
-                selectedTab = .coolingDown
-            }
+                .offset(x: 12) // موازنة مع الأيقونة اليمنى ليصبح في المنتصف تماماً
             
-            tabButton(title: "Ready to Decide", count: viewModel.readyItems.count, isActive: selectedTab == .readyToDecide) {
-                selectedTab = .readyToDecide
-            }
+            Spacer()
+            
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 16))
+                .foregroundColor(.white)
         }
-        .padding(4)
-        .background(Color(.systemGray6).opacity(0.6))
-        .cornerRadius(12)
     }
     
-    private func tabButton(title: String, count: Int, isActive: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(title)
-                    .font(.system(size: 14, weight: isActive ? .semibold : .medium))
-                
-                Text("\(count)")
-                    .font(.system(size: 11, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(isActive ? Color.white.opacity(0.2) : Color.gray.opacity(0.2))
+    private var topTabBar: some View {
+        HStack(spacing: 8) {
+            ForEach(topTabs, id: \.self) { tab in
+                Text(tab)
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(selectedSubTab == tab ? Color.afterTasteButton : Color.afterTasteButton.opacity(0.4))
+                    .foregroundColor(selectedSubTab == tab ? .white : .gray)
                     .clipShape(Capsule())
+                    .onTapGesture {
+                        selectedSubTab = tab
+                    }
             }
-            .frame(maxWidth: .infinite)
-            .frame(height: 36)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isActive ? Color(.systemGray4).opacity(0.4) : Color.clear)
-            )
-        }
-        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: selectedTab)
-    }
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: selectedTab == .coolingDown ? "flame" : "checkmark.circle")
-                .font(.system(size: 40))
-                .foregroundColor(.gray.opacity(0.6))
-            Text(selectedTab == .coolingDown ? "No items cooling down" : "Nothing ready for decision")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundColor(.gray)
+            Spacer()
         }
     }
 }
 
-// MARK: - Item Card Component
+// MARK: - Figma Item Card Component
 
-struct ItemCard: View {
+struct FigmaItemCard: View {
     let item: CooldownItem
-    let tab: CooldownView.Tab
+    let isCooling: Bool
     var onRemove: () -> Void
     
-    private var gradientColors: [Color] {
-        if tab == .coolingDown {
-            return [Color.blue, Color.purple]
-        } else {
-            return [Color.green, Color.emerald]
-        }
-    }
-    
     var body: some View {
-        HStack(spacing: 16) {
-            // Left Status Visual Anchor
-            RoundedRectangle(cornerRadius: 8)
-                .fill(
-                    LinearGradient(
-                        colors: gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 4, height: 48)
+        HStack(spacing: 14) {
+            // اسم العنصر وسعره متطابق مع الفيجما
+            Text(item.itemName)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(.white)
+                .lineLimit(1)
             
-            VStack(alignment: .leading, spacing: 6) {
-                Text(item.itemName)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                
-                Text(String(format: "$%.2f", item.price))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.gray)
-            }
+            Text(String(format: "$%.0f", item.price))
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(.gray)
             
             Spacer()
             
-            if tab == .coolingDown {
-                // Countdown Capsule
-                HStack(spacing: 4) {
-                    Image(systemName: "hourglass")
-                        .font(.system(size: 11))
-                    
-                    // استخدام التايمر الديناميكي من الموديل حقك
-                    Text(item.remainingTimeFormatted)
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .foregroundColor(.orange)
-                .background(Color.orange.opacity(0.12))
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                )
+            if isCooling {
+                // كبسولة العداد الموقوت البنفسجية الهادئة متطابقة مع التصميم (03:23:55)
+                Text(formatRemainingTime(item.remainingTime))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .foregroundColor(.white)
+                    .background(Color.afterTasteButton.opacity(0.5))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.afterTastePurple.opacity(0.3), lineWidth: 1)
+                    )
             } else {
+                // زر Decide باللون البنفسجي المعتمد في التطبيق
                 Button(action: {
-                    // Handle decision logic
+                    // تفاعل اتخاذ القرار
                 }) {
                     Text("Decide")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.black)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.white)
-                        .cornerRadius(20)
+                        .padding(.vertical, 6)
+                        .background(Color.afterTastePurple)
+                        .cornerRadius(14)
                 }
             }
         }
-        .padding(.all, 16)
-        .background(Color(.systemGray6).opacity(0.4))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(height: 52)
+        .background(Color.afterTasteButton) // نفس لون الـ Button من لوحة الأصول بالفيجما
+        .cornerRadius(12)
         .contextMenu {
             Button(role: .destructive, action: onRemove) {
-                Label("Remove Item", systemName: "trash")
+                Label("Remove Item", systemImage: "trash")
             }
         }
     }
+    
+    // تحويل الوقت لصيغة الـ Digital المعتمدة بالفيجما (HH:MM:SS)
+    private func formatRemainingTime(_ time: TimeInterval) -> String {
+        if time <= 0 { return "00:00:00" }
+        let hours = Int(time) / 3600
+        let minutes = (Int(time) % 3600) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
 }
 
-// Global scope extensions
+// MARK: - لوحة الألوان المطابقة للـ Assets المرفقة بالملي
 extension Color {
-    static let emerald = Color(red: 0.04, green: 0.73, blue: 0.45)
+    // اللون البنفسجي للزر الرئيسي (Button 2 / Color)
+    static let afterTastePurple = Color(red: 0.58, green: 0.52, blue: 0.82)
+    
+    // لون خلفية البطاقات والأزرار الغامقة الرمادية (Button)
+    static let afterTasteButton = Color(red: 0.16, green: 0.16, blue: 0.18)
+    
+    // نصوص رمادية داكنة للحالات الفارغة
+    static let darkGrayText = Color(red: 0.4, green: 0.4, blue: 0.4)
+}
+
+// MARK: - Preview
+#Preview {
+    CooldownView()
 }
 
 // MARK: - Preview

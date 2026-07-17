@@ -11,18 +11,17 @@ import Foundation
 struct CooldownItem: Identifiable {
 
     let id = UUID()
-
     let itemName: String
     let price: Double
-
     let createdAt: Date
-    let expiresAt: Date
+
+    var expiresAt: Date
 
     var isExpired: Bool {
         Date() >= expiresAt
     }
 
     var remainingTime: TimeInterval {
-        max(expiresAt.timeIntervalSinceNow, 0)
+        max(0, expiresAt.timeIntervalSinceNow)
     }
 }

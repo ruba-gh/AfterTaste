@@ -46,4 +46,12 @@ final class CooldownViewModel: ObservableObject {
     var coolingItems: [CooldownItem] {
         items.filter { !$0.isExpired }
     }
+    func extendCooldown(_ item: CooldownItem, seconds: TimeInterval) {
+
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else {
+            return
+        }
+
+        items[index].expiresAt = Date().addingTimeInterval(seconds)
+    }
 }

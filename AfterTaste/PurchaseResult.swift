@@ -8,6 +8,9 @@ import SwiftUI
 
 struct PurchaseResult: View {
     @State private var showCoolDownPopup = false
+    @State private var selectedItem: CooldownItem?
+    @State private var goToCooldown = false
+    @StateObject private var cooldownViewModel = CooldownViewModel()
     @ObservedObject var viewModel: PurchaseViewModel
 
     private let timerColor = Color(
@@ -359,9 +362,22 @@ struct PurchaseResult: View {
     private var actionButtons: some View {
         HStack(spacing: 10) {
             Button("Save for later") {
+
+                let item = CooldownItem(
+                    itemName: viewModel.resultTitle,
+                    price: viewModel.resultPrice,
+                    createdAt: Date(),
+                    expiresAt: Date().addingTimeInterval(60 * 30)
+                )
+                cooldownViewModel.addItem(
+                    name: viewModel.resultTitle,
+                    price: viewModel.resultPrice,
+                    cooldownHours: 24
+                )
                 withAnimation(.easeInOut(duration: 0.20)) {
                     showCoolDownPopup = true
                 }
+
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)

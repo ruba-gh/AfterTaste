@@ -35,7 +35,13 @@ final class PurchaseViewModel: ObservableObject {
         let normalizedPrice = price
             .replacingOccurrences(of: ",", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+
         return Double(normalizedPrice) ?? 0
+    }
+
+    var resultPrice: Double {
+        numericPrice
+    
     }
 
     var totalMinutesRequired: Int {
