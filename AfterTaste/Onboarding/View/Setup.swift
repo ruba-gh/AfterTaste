@@ -205,8 +205,8 @@ struct Setup: View {
                 }
                 
                 Spacer()
-                
-                Text("$23")
+
+                Text(String(format: "$%.0f", estimatedHourlyRate))
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white)
             }

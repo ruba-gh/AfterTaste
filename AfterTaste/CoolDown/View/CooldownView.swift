@@ -35,12 +35,20 @@ struct CooldownView: View {
                     .padding(.bottom, 28)
                 
                 // 3. محتوى القائمة يتغير حسب التبويب المختار
-                ScrollView(.vertical, showsIndicators: false) {
-                    switch selectedSubTab {
-                    case "Cool down":
+                switch selectedSubTab {
+                case "Cool down":
+                    ScrollView(.vertical, showsIndicators: false) {
                         coolDownContent
-                    default:
-                        // صفحات After taste / History / Drafts (تُبنى لاحقاً)
+                    }
+                case "After taste":
+                    // شاشة رغد After taste مربوطة بالموديل المشترك
+                    AfterTasteView()
+                case "History":
+                    // شاشة السجل المستقلة
+                    HistoryView()
+                default:
+                    // صفحة Drafts (تُبنى لاحقاً)
+                    ScrollView(.vertical, showsIndicators: false) {
                         placeholderContent(for: selectedSubTab)
                     }
                 }

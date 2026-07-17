@@ -8,35 +8,14 @@ import SwiftUI
 
 struct AfterTasteView: View {
 
-    @State private var items: [AfterTasteItem] = [
-        AfterTasteItem(
-            itemName: "Elephant Plushie",
-            price: 30,
-            reflectDate: Date().addingTimeInterval(15)
-        ),
+    @EnvironmentObject var viewModel: CooldownViewModel
 
-        AfterTasteItem(
-            itemName: "Coffee Mug",
-            price: 18,
-            reflectDate: Date().addingTimeInterval(8)
-        )
-    ]
-
-    @State private var selectedItem: AfterTasteItem?
+    @State private var selectedItem: CooldownItem?
     @State private var reflectionText: String = ""
     @State private var reflectionChoice: ReflectionChoice?
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let currentDate = context.date
-
-            let reflectItems = items.filter {
-                $0.reflectDate <= currentDate
-            }
-
-            let waitingItems = items.filter {
-                $0.reflectDate > currentDate
-            }
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
 
             ScrollView(
                 .vertical,
@@ -47,12 +26,11 @@ struct AfterTasteView: View {
                     spacing: 24
                 ) {
                     reflectSection(
-                        items: reflectItems
+                        items: viewModel.afterTasteReadyItems
                     )
 
                     waitingSection(
-                        items: waitingItems,
-                        currentDate: currentDate
+                        items: viewModel.afterTasteWaitingItems
                     )
                 }
                 .padding(.horizontal, 24)
@@ -70,7 +48,7 @@ struct AfterTasteView: View {
     // MARK: - Reflect Section
 
     private func reflectSection(
-        items: [AfterTasteItem]
+        items: [CooldownItem]
     ) -> some View {
         VStack(
             alignment: .leading,
@@ -123,7 +101,7 @@ struct AfterTasteView: View {
     }
 
     private func reflectRow(
-        _ item: AfterTasteItem
+        _ item: CooldownItem
     ) -> some View {
         HStack(spacing: 14) {
             Text(item.itemName)
@@ -182,8 +160,7 @@ struct AfterTasteView: View {
     // MARK: - Waiting Section
 
     private func waitingSection(
-        items: [AfterTasteItem],
-        currentDate: Date
+        items: [CooldownItem]
     ) -> some View {
         VStack(
             alignment: .leading,
@@ -211,10 +188,7 @@ struct AfterTasteView: View {
                         Array(items.enumerated()),
                         id: \.element.id
                     ) { index, item in
-                        waitingRow(
-                            item,
-                            currentDate: currentDate
-                        )
+                        waitingRow(item)
 
                         if index < items.count - 1 {
                             Divider()
@@ -239,8 +213,7 @@ struct AfterTasteView: View {
     }
 
     private func waitingRow(
-        _ item: AfterTasteItem,
-        currentDate: Date
+        _ item: CooldownItem
     ) -> some View {
         HStack(spacing: 14) {
             Text(item.itemName)
@@ -264,10 +237,7 @@ struct AfterTasteView: View {
             )
 
             Text(
-                remainingTime(
-                    until: item.reflectDate,
-                    from: currentDate
-                )
+                remainingLabel(item.reflectRemaining)
             )
             .font(
                 .system(
@@ -296,7 +266,7 @@ struct AfterTasteView: View {
     // MARK: - Reflection Sheet
 
     private func reflectionSheet(
-        item: AfterTasteItem
+        item: CooldownItem
     ) -> some View {
         ZStack {
             Color(
@@ -330,7 +300,7 @@ struct AfterTasteView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 22)
 
-                reflectionButtons
+                reflectionButtons(for: item)
                     .padding(.horizontal, 24)
                     .padding(.top, 22)
 
@@ -341,7 +311,7 @@ struct AfterTasteView: View {
     }
 
     private func productSummary(
-        _ item: AfterTasteItem
+        _ item: CooldownItem
     ) -> some View {
         HStack(spacing: 14) {
             Text(item.itemName)
@@ -360,12 +330,11 @@ struct AfterTasteView: View {
             .font(.system(size: 16))
             .foregroundStyle(.white)
 
-            Text("Waited 30 minutes")
+            Text(item.waitedText)
                 .font(.system(size: 15))
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 14)
         .frame(height: 62)
@@ -417,44 +386,52 @@ struct AfterTasteView: View {
         )
     }
 
-    private var reflectionButtons: some View {
+    private func reflectionButtons(
+        for item: CooldownItem
+    ) -> some View {
         HStack(spacing: 12) {
             Button {
-                reflectionChoice = .happy
+                submitReflection(for: item, choice: .happy)
             } label: {
                 Text("Happy with it")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
-                    .background(
-                        reflectionChoice == .happy
-                            ? Color("Color")
-                            : Color("Color").opacity(0.70)
-                    )
+                    .background(Color("Color"))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
 
             Button {
-                reflectionChoice = .regret
+                submitReflection(for: item, choice: .regret)
             } label: {
                 Text("Regret buying it")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Color("Color"))
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
-                    .background(
-                        Color.white.opacity(
-                            reflectionChoice == .regret
-                                ? 0.16
-                                : 0.08
-                        )
-                    )
+                    .background(Color.white.opacity(0.08))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
         }
+    }
+
+    // MARK: - Actions
+
+    /// إنهاء التأمل: يحفظ النص والشعور وينقل العنصر للسجل (History) ثم يغلق الشيت.
+    private func submitReflection(
+        for item: CooldownItem,
+        choice: ReflectionChoice
+    ) {
+        reflectionChoice = choice
+        viewModel.submitReflection(
+            item,
+            text: reflectionText,
+            choice: choice
+        )
+        selectedItem = nil
     }
 
     // MARK: - Helpers
@@ -470,18 +447,10 @@ struct AfterTasteView: View {
             .padding(.horizontal, 4)
     }
 
-    private func remainingTime(
-        until date: Date,
-        from currentDate: Date
+    private func remainingLabel(
+        _ interval: TimeInterval
     ) -> String {
-        let seconds = max(
-            0,
-            Int(
-                date.timeIntervalSince(
-                    currentDate
-                )
-            )
-        )
+        let seconds = max(0, Int(interval))
 
         if seconds < 60 {
             return "\(seconds) Seconds"
@@ -504,15 +473,6 @@ struct AfterTasteView: View {
     }
 }
 
-// MARK: - Model
-
-struct AfterTasteItem: Identifiable {
-    let id = UUID()
-    let itemName: String
-    let price: Double
-    let reflectDate: Date
-}
-
 enum ReflectionChoice {
     case happy
     case regret
@@ -526,6 +486,7 @@ enum ReflectionChoice {
             .ignoresSafeArea()
 
         AfterTasteView()
+            .environmentObject(CooldownViewModel())
     }
     .preferredColorScheme(.dark)
 }

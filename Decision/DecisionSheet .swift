@@ -143,7 +143,8 @@ struct DecisionSheet: View {
 
                         Button {
 
-                            cooldownViewModel.removeItem(item)
+                            // الشراء ينقل العنصر لمرحلة After taste مع حفظ الانطباع الأول
+                            cooldownViewModel.markBought(item, firstReaction: explanation)
                             dismiss()
 
                         } label: {
