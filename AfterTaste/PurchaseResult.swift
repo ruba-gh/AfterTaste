@@ -353,6 +353,7 @@ struct PurchaseResult: View {
             .frame(height: 44)
             .background(Color.white.opacity(0.08))
             .clipShape(Capsule())
+            
         }
         .font(.system(size: 16, weight: .medium))
     }
