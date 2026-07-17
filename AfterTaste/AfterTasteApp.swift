@@ -22,12 +22,24 @@ struct AfterTasteApp: App {
 
 struct RootView: View {
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+    @State private var showSplash = true
 
     var body: some View {
-        if didFinishOnboarding {
-            ContentView()
-        } else {
-            OnboardingStart()
+        Group {
+            if showSplash {
+                onboarding()
+            } else if didFinishOnboarding {
+                ContentView()
+            } else {
+                OnboardingStart()
+            }
+        }
+        .task {
+            // شاشة الشعار (Splash) تظهر ثانيتين ثم ننتقل للأونبوردنق
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showSplash = false
+            }
         }
     }
 }
