@@ -290,7 +290,7 @@ struct SettingsView: View {
 
     // MARK: - Default Export
 
-    private static func defaultExportData() -> Data {
+    nonisolated private static func defaultExportData() -> Data {
         let exportDate =
             ISO8601DateFormatter()
                 .string(from: Date())

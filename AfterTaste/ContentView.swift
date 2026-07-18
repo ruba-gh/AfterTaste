@@ -1,35 +1,24 @@
-//
-//  ContentView.swift
-//  AfterTaste
-//
-//  Created by Ruba Alghamdi on 29/01/1448 AH.
-//
-
-//
-//  ContentView.swift
-//  AfterTaste
-//
-//  Created by Ruba Alghamdi on 29/01/1448 AH.
-//
-
 import SwiftUI
 
 struct ContentView: View {
     @StateObject private var purchaseVM = PurchaseViewModel()
     @StateObject private var draftStore = DraftStore()
-    
+
     @State private var selectedTab = 0
-    
+
+    // نفس المفتاح المستخدم في SettingsView
+    @AppStorage("afterTaste.theme")
+    private var selectedTheme: AppTheme = .auto
 
     init() {
         let appearance = UITabBarAppearance()
 
+        // استخدمي ألوان النظام عشان تتغير مع Light / Dark
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor.black
-        appearance.shadowColor =
-            UIColor.white.withAlphaComponent(0.15)
+        appearance.backgroundColor = UIColor.systemBackground
+        appearance.shadowColor = UIColor.separator
 
-        let normalColor = UIColor.white
+        let normalColor = UIColor.secondaryLabel
 
         let selectedColor =
             UIColor(named: "Color")
@@ -59,14 +48,9 @@ struct ContentView: View {
                 .foregroundColor: selectedColor
             ]
 
-        UITabBar.appearance().standardAppearance =
-            appearance
-
-        UITabBar.appearance().scrollEdgeAppearance =
-            appearance
-
-        UITabBar.appearance().unselectedItemTintColor =
-            normalColor
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+        UITabBar.appearance().unselectedItemTintColor = normalColor
     }
 
     var body: some View {
@@ -91,10 +75,7 @@ struct ContentView: View {
                 CooldownView()
             }
             .tabItem {
-                Image(
-                    systemName: "list.clipboard.fill"
-                )
-
+                Image(systemName: "list.clipboard.fill")
                 Text("Decisions")
             }
             .tag(1)
@@ -108,7 +89,6 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "target")
-
                 Text("Goals")
             }
             .tag(2)
@@ -120,18 +100,19 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "person.fill")
-
                 Text("Settings")
             }
             .tag(3)
         }
         .tint(Color("Color"))
 
-        // Forces dark mode throughout the entire app
-        .preferredColorScheme(.dark)
+        // أهم تعديل هنا
+        .preferredColorScheme(selectedTheme.colorScheme)
+
         .environmentObject(draftStore)
     }
 }
+
 
 // MARK: - Placeholder Screen
 
@@ -140,7 +121,7 @@ private struct PlaceholderScreen: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color(uiColor: .systemBackground)
                 .ignoresSafeArea()
 
             Text(title)
@@ -150,12 +131,13 @@ private struct PlaceholderScreen: View {
                         weight: .bold
                     )
                 )
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
 
 // MARK: - Preview
 
@@ -164,5 +146,4 @@ private struct PlaceholderScreen: View {
         .environmentObject(
             CooldownViewModel()
         )
-        .preferredColorScheme(.dark)
 }
