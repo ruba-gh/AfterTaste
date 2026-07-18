@@ -2,555 +2,1521 @@
 //  PurchaseResult.swift
 //  AfterTaste
 //
-//  Created by Raghad Aljuid on 02/02/1448 AH.
-//
+
 import SwiftUI
 
 struct PurchaseResult: View {
-    @State private var showCoolDownPopup = false
-    @State private var goToCooldown = false
-    @State private var didFinishPurchase = false
-    @State private var didSaveDraft = false
 
-    // نقطة بداية العدّاد
-    @State private var startDate = Date()
+    // MARK: - Environment
 
-    @EnvironmentObject var cooldownViewModel: CooldownViewModel
-    @EnvironmentObject private var draftStore: DraftStore
-    @ObservedObject var viewModel: PurchaseViewModel
+    @Environment(\.dismiss)
+    private var dismiss
 
-    private let timerColor = Color(
-        red: 176 / 255,
-        green: 115 / 255,
-        blue: 131 / 255
-    )
+    @EnvironmentObject
+    var cooldownViewModel: CooldownViewModel
 
-    // إجمالي الثواني المطلوبة = السعر / الأجر بالساعة × 3600
-    private var totalSecondsRequired: Int {
-        let hourly = max(viewModel.hourlyRate, 0.0001) // حماية من القسمة على صفر
-        let seconds = (viewModel.numericPrice / hourly) * 3600
-        return max(0, Int(seconds.rounded()))
+    @EnvironmentObject
+    private var draftStore: DraftStore
+
+
+    // MARK: - View Model
+
+    @ObservedObject
+    var viewModel: PurchaseViewModel
+
+
+    // MARK: - Speech
+
+    @StateObject
+    private var speechRecognizer =
+        SpeechRecognizer()
+
+
+    // MARK: - State
+
+    @State
+    private var showCoolDownPopup =
+        false
+
+    @State
+    private var goToCooldown =
+        false
+
+    @State
+    private var didFinishPurchase =
+        false
+
+    @State
+    private var didSaveDraft =
+        false
+
+
+    // MARK: - Navigation Title
+
+    /// Directly connected to the name
+    /// entered on the Purchase screen.
+    private var itemResultTitle: String {
+
+        let name =
+            viewModel
+                .itemName
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+
+
+        return name.isEmpty
+        ? "Item Result"
+        : "\(name) Result"
     }
 
-    // MARK: - Cost per unit (use/day/month/year)
-    private var costPerUnitText: String? {
-        // نحاول تحويل lifeExpectancy إلى رقم
-        let count = Double(viewModel.lifeExpectancy.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-        guard count > 0 else { return nil }
 
-        let price = viewModel.numericPrice
-        guard price > 0 else { return nil }
+    // MARK: - Cost Per Unit
 
-        switch viewModel.lifeExpectancyUnit {
+    private var costPerUnitText:
+        String? {
+
+        let count =
+            Double(
+                viewModel
+                    .lifeExpectancy
+                    .trimmingCharacters(
+                        in:
+                            .whitespacesAndNewlines
+                    )
+            )
+            ?? 0
+
+
+        guard count > 0
+        else {
+            return nil
+        }
+
+
+        let price =
+            viewModel.numericPrice
+
+
+        guard price > 0
+        else {
+            return nil
+        }
+
+
+        switch
+            viewModel.lifeExpectancyUnit {
+
         case "times":
-            let perUse = price / count
-            return String(format: "≈ $%.2f per use", perUse)
+
+            return String(
+                format:
+                    "≈ $%.2f per use",
+                price / count
+            )
+
 
         case "days":
-            let perDay = price / count
-            return String(format: "≈ $%.2f per day", perDay)
+
+            return String(
+                format:
+                    "≈ $%.2f per day",
+                price / count
+            )
+
 
         case "months":
-            let perMonth = price / count
-            return String(format: "≈ $%.2f per month", perMonth)
+
+            return String(
+                format:
+                    "≈ $%.2f per month",
+                price / count
+            )
+
 
         case "years":
-            let perYear = price / count
-            return String(format: "≈ $%.2f per year", perYear)
+
+            return String(
+                format:
+                    "≈ $%.2f per year",
+                price / count
+            )
+
 
         default:
+
             return nil
         }
     }
 
+
+    // MARK: - Body
+
     var body: some View {
+
         ZStack {
+
             Color.black
                 .ignoresSafeArea()
 
+
+            // Navigation is OUTSIDE ScrollView,
+            // so it never scrolls.
             VStack(spacing: 0) {
-                resultCard
-                    .padding(.horizontal, 16)
-                    .padding(.top, 40)
-                    .padding(.bottom, 58)
+
+                customNavigationBar
+                    .padding(
+                        .horizontal,
+                        24
+                    )
+                    .padding(
+                        .bottom,
+                        18
+                    )
+
+
+                ScrollView(
+                    .vertical,
+                    showsIndicators:
+                        false
+                ) {
+
+                    resultCard
+                        .padding(
+                            .horizontal,
+                            24
+                        )
+                        .padding(
+                            .bottom,
+                            120
+                        )
+                }
             }
 
+
             if showCoolDownPopup {
+
                 coolDownPopup
             }
         }
-        .navigationTitle(viewModel.resultTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .preferredColorScheme(.dark)
-        .navigationDestination(isPresented: $goToCooldown) {
+        .toolbar(
+            .hidden,
+            for:
+                .navigationBar
+        )
+        .navigationDestination(
+            isPresented:
+                $goToCooldown
+        ) {
+
             CooldownView()
         }
         .onAppear {
-            // ابدأ العدّاد من الآن
-            startDate = Date()
+
+            viewModel
+                .loadSavedHourlyRate()
         }
         .onDisappear {
+
+            speechRecognizer
+                .stopRecording()
+
             saveDraftIfNeeded()
+        }
+
+        // Whenever speech recognizer
+        // produces text, update reason.
+        .onReceive(
+            speechRecognizer
+                .$transcript
+        ) { newText in
+
+            guard
+                speechRecognizer
+                    .isRecording
+                ||
+                !newText.isEmpty
+            else {
+                return
+            }
+
+
+            viewModel.reason =
+                newText
         }
     }
 
+
+    // MARK: - Fixed Navigation Bar
+
+    private var customNavigationBar:
+        some View {
+
+        ZStack {
+
+            Text(
+                itemResultTitle
+            )
+            .font(
+                .system(
+                    size: 18,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+            .lineLimit(1)
+            .minimumScaleFactor(
+                0.75
+            )
+            .padding(
+                .horizontal,
+                70
+            )
+
+
+            HStack {
+
+                Button {
+
+                    dismiss()
+
+                } label: {
+
+                    Image(
+                        systemName:
+                            "chevron.left"
+                    )
+                    .font(
+                        .system(
+                            size: 22,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+                    .frame(
+                        width: 56,
+                        height: 56
+                    )
+                    .background(
+                        Color.white
+                            .opacity(0.07)
+                    )
+                    .clipShape(
+                        Circle()
+                    )
+                    .overlay {
+
+                        Circle()
+                            .stroke(
+                                Color.white
+                                    .opacity(0.25),
+                                lineWidth: 1
+                            )
+                    }
+                }
+                .buttonStyle(
+                    .plain
+                )
+
+
+                Spacer()
+            }
+        }
+        .frame(
+            height: 64
+        )
+    }
+
+
     // MARK: - Result Card
 
-    private var resultCard: some View {
+    private var resultCard:
+        some View {
+
         VStack(spacing: 0) {
-            Text("This purchase equals")
-                .font(.system(size: 23, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.top, 16)
+
+            Text(
+                "This purchase equals"
+            )
+            .font(
+                .system(
+                    size: 23,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+            .padding(
+                .top,
+                20
+            )
+
 
             timeCounter
-                .padding(.top, 10)
+                .padding(
+                    .top,
+                    14
+                )
 
-            Divider()
-                .overlay(.white.opacity(0.18))
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
+
+            sectionDivider
+                .padding(
+                    .top,
+                    22
+                )
+
+
+            // Impulse / Planned
 
             choiceRow(
-                leftTitle: "Impulse",
-                leftSelected: viewModel.purchaseType == .impulse,
-                rightTitle: "Planned",
-                rightSelected: viewModel.purchaseType == .planned,
+                leftTitle:
+                    "Impulse",
+
+                leftSelected:
+                    viewModel
+                    .purchaseType
+                    == .impulse,
+
+                rightTitle:
+                    "Planned",
+
+                rightSelected:
+                    viewModel
+                    .purchaseType
+                    == .planned,
+
                 leftAction: {
-                    viewModel.purchaseType = .impulse
+
+                    viewModel
+                        .purchaseType =
+                        .impulse
                 },
+
                 rightAction: {
-                    viewModel.purchaseType = .planned
+
+                    viewModel
+                        .purchaseType =
+                        .planned
                 }
             )
 
-            Divider()
-                .overlay(.white.opacity(0.10))
-                .padding(.horizontal, 18)
+
+            rowDivider
+
+
+            // One time / Subscription
 
             choiceRow(
-                leftTitle: "One time",
-                leftSelected: viewModel.paymentType == .oneTime,
-                rightTitle: "Subscription",
-                rightSelected: viewModel.paymentType == .subscription,
+                leftTitle:
+                    "One time",
+
+                leftSelected:
+                    viewModel
+                    .paymentType
+                    == .oneTime,
+
+                rightTitle:
+                    "Subscription",
+
+                rightSelected:
+                    viewModel
+                    .paymentType
+                    == .subscription,
+
                 leftAction: {
-                    viewModel.paymentType = .oneTime
+
+                    viewModel
+                        .paymentType =
+                        .oneTime
                 },
+
                 rightAction: {
-                    viewModel.paymentType = .subscription
+
+                    viewModel
+                        .paymentType =
+                        .subscription
                 }
             )
 
-            Divider()
-                .overlay(.white.opacity(0.10))
-                .padding(.horizontal, 18)
+
+            rowDivider
+
+
+            // Need / Want
 
             choiceRow(
-                leftTitle: "Need",
-                leftSelected: viewModel.purchasePriority == .need,
-                rightTitle: "Want",
-                rightSelected: viewModel.purchasePriority == .want,
+                leftTitle:
+                    "Need",
+
+                leftSelected:
+                    viewModel
+                    .purchasePriority
+                    == .need,
+
+                rightTitle:
+                    "Want",
+
+                rightSelected:
+                    viewModel
+                    .purchasePriority
+                    == .want,
+
                 leftAction: {
-                    viewModel.purchasePriority = .need
+
+                    viewModel
+                        .purchasePriority =
+                        .need
                 },
+
                 rightAction: {
-                    viewModel.purchasePriority = .want
+
+                    viewModel
+                        .purchasePriority =
+                        .want
                 }
             )
 
-            Divider()
-                .overlay(.white.opacity(0.18))
-                .padding(.horizontal, 18)
 
-            urgencySlider
-                .padding(.horizontal, 18)
-                .padding(.top, 12)
+            sectionDivider
+
+
+            urgencySection
+                .padding(
+                    .horizontal,
+                    20
+                )
+                .padding(
+                    .top,
+                    20
+                )
+
 
             reasonField
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
+                .padding(
+                    .horizontal,
+                    20
+                )
+                .padding(
+                    .top,
+                    28
+                )
+
 
             lifeExpectancySection
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
+                .padding(
+                    .horizontal,
+                    20
+                )
+                .padding(
+                    .top,
+                    24
+                )
+
 
             actionButtons
-                .padding(.horizontal, 18)
-                .padding(.top, 22)
-                .padding(.bottom, 18)
+                .padding(
+                    .horizontal,
+                    20
+                )
+                .padding(
+                    .top,
+                    46
+                )
+                .padding(
+                    .bottom,
+                    20
+                )
         }
-        .background(Color.white.opacity(0.11))
+        .background(
+            Color(
+                red: 0.105,
+                green: 0.105,
+                blue: 0.115
+            )
+        )
         .clipShape(
             RoundedRectangle(
-                cornerRadius: 30,
-                style: .continuous
+                cornerRadius: 38,
+                style:
+                    .continuous
             )
         )
     }
 
-    // MARK: - Time Counter (Animated)
 
-    // عدّاد تصاعدي من 0 حتى totalSecondsRequired
-    private var timeCounter: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let elapsed = max(0, Int(context.date.timeIntervalSince(startDate)))
-            let current = min(elapsed, totalSecondsRequired)
+    // MARK: - Time
 
-            let days = current / 86_400
-            let hours = (current % 86_400) / 3_600
-            let minutes = (current % 3_600) / 60
-            let seconds = current % 60
+    private var timeCounter:
+        some View {
 
-            HStack(alignment: .top, spacing: 8) {
-                timeBox(value: days, label: "Day")
-                separator
-                timeBox(value: hours, label: "Hours")
-                separator
-                timeBox(value: minutes, label: "Minutes")
-                // لو تبين الثواني:
-                // separator
-                // timeBox(value: seconds, label: "Seconds")
+        Group {
+
+            if viewModel
+                .hourlyRate > 0 {
+
+                HStack(
+                    alignment:
+                        .top,
+                    spacing:
+                        7
+                ) {
+
+                    timeBox(
+                        value:
+                            viewModel
+                            .daysRequired,
+
+                        label:
+                            "Day"
+                    )
+
+
+                    timeSeparator
+
+
+                    timeBox(
+                        value:
+                            viewModel
+                            .hoursRequired,
+
+                        label:
+                            "Hours"
+                    )
+
+
+                    timeSeparator
+
+
+                    timeBox(
+                        value:
+                            viewModel
+                            .minutesRequired,
+
+                        label:
+                            "Minutes"
+                    )
+                }
+
+            } else {
+
+                Text(
+                    "Add your hourly rate in Settings"
+                )
+                .font(
+                    .system(
+                        size: 14
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                        .opacity(
+                            0.6
+                        )
+                )
+                .padding(
+                    .vertical,
+                    22
+                )
             }
-            .accessibilityLabel("Elapsed time towards this purchase")
-            .accessibilityValue("\(days) days, \(hours) hours, \(minutes) minutes, \(seconds) seconds")
         }
     }
+
 
     private func timeBox(
         value: Int,
         label: String
     ) -> some View {
-        VStack(spacing: 4) {
-            Text(String(format: "%02d", value))
-                .font(
-                    .system(
-                        size: 30,
-                        weight: .bold,
-                        design: .rounded
-                    )
-                )
-                .foregroundStyle(.white)
-                .frame(width: 50, height: 50)
-                .background(timerColor)
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 10,
-                        style: .continuous
-                    )
-                )
 
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.85))
+        VStack(
+            spacing: 4
+        ) {
+
+            Text(
+                String(
+                    format:
+                        "%02d",
+                    value
+                )
+            )
+            .font(
+                .system(
+                    size: 30,
+                    weight: .bold,
+                    design: .rounded
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+            .frame(
+                width: 48,
+                height: 48
+            )
+            .background {
+
+                LinearGradient(
+                    colors: [
+
+                        Color(
+                            red: 0.66,
+                            green: 0.43,
+                            blue: 0.53
+                        ),
+
+                        Color(
+                            red: 0.86,
+                            green: 0.35,
+                            blue: 0.24
+                        )
+                    ],
+
+                    startPoint:
+                        .bottomLeading,
+
+                    endPoint:
+                        .topTrailing
+                )
+            }
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 10,
+                    style:
+                        .continuous
+                )
+            )
+
+
+            Text(
+                label
+            )
+            .font(
+                .system(
+                    size: 12
+                )
+            )
+            .foregroundStyle(
+                .white
+                    .opacity(
+                        0.85
+                    )
+            )
         }
     }
 
-    private var separator: some View {
+
+    private var timeSeparator:
+        some View {
+
         Text(":")
-            .font(.system(size: 28, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.top, 9)
+            .font(
+                .system(
+                    size: 28,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+            .padding(
+                .top,
+                8
+            )
     }
 
-    // MARK: - Choices
+
+    // MARK: - Dividers
+
+    private var sectionDivider:
+        some View {
+
+        Divider()
+            .overlay(
+                Color.white
+                    .opacity(
+                        0.20
+                    )
+            )
+            .padding(
+                .horizontal,
+                20
+            )
+    }
+
+
+    private var rowDivider:
+        some View {
+
+        Divider()
+            .overlay(
+                Color.white
+                    .opacity(
+                        0.07
+                    )
+            )
+            .padding(
+                .horizontal,
+                20
+            )
+    }
+
+
+    // MARK: - Choice Rows
 
     private func choiceRow(
         leftTitle: String,
         leftSelected: Bool,
         rightTitle: String,
         rightSelected: Bool,
-        leftAction: @escaping () -> Void,
-        rightAction: @escaping () -> Void
+        leftAction:
+            @escaping () -> Void,
+        rightAction:
+            @escaping () -> Void
     ) -> some View {
-        HStack {
+
+        HStack(
+            spacing: 0
+        ) {
+
             selectionButton(
-                title: leftTitle,
-                isSelected: leftSelected,
-                action: leftAction
+                title:
+                    leftTitle,
+
+                isSelected:
+                    leftSelected,
+
+                action:
+                    leftAction
+            )
+            .frame(
+                maxWidth:
+                    .infinity,
+
+                alignment:
+                    .leading
             )
 
-            Spacer()
 
             selectionButton(
-                title: rightTitle,
-                isSelected: rightSelected,
-                action: rightAction
+                title:
+                    rightTitle,
+
+                isSelected:
+                    rightSelected,
+
+                action:
+                    rightAction
+            )
+            .frame(
+                maxWidth:
+                    .infinity,
+
+                alignment:
+                    .leading
             )
         }
-        .padding(.horizontal, 22)
-        .frame(height: 64)
+        .padding(
+            .horizontal,
+            20
+        )
+        .frame(
+            height: 66
+        )
     }
+
 
     private func selectionButton(
         title: String,
         isSelected: Bool,
-        action: @escaping () -> Void
+        action:
+            @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Circle()
-                    .stroke(
-                        isSelected
-                            ? Color("Color")
-                            : Color.white.opacity(0.25),
-                        lineWidth: 3
-                    )
-                    .frame(width: 22, height: 22)
-                    .overlay {
-                        if isSelected {
-                            Circle()
-                                .fill(Color("Color"))
-                                .frame(width: 10, height: 10)
-                        }
-                    }
 
-                Text(title)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.white)
+        Button(
+            action:
+                action
+        ) {
+
+            HStack(
+                spacing: 14
+            ) {
+
+                ZStack {
+
+                    Circle()
+                        .stroke(
+                            isSelected
+                            ? Color(
+                                red: 0.55,
+                                green: 0.48,
+                                blue: 0.86
+                            )
+
+                            : Color.white
+                                .opacity(
+                                    0.22
+                                ),
+
+                            lineWidth:
+                                2.5
+                        )
+                        .frame(
+                            width: 24,
+                            height: 24
+                        )
+
+
+                    if isSelected {
+
+                        Circle()
+                            .fill(
+                                Color(
+                                    red: 0.55,
+                                    green: 0.48,
+                                    blue: 0.86
+                                )
+                            )
+                            .frame(
+                                width: 12,
+                                height: 12
+                            )
+                    }
+                }
+
+
+                Text(
+                    title
+                )
+                .font(
+                    .system(
+                        size: 17
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .plain
+        )
     }
+
 
     // MARK: - Urgency
 
-    private var urgencySlider: some View {
-        VStack(spacing: 0) {
+    private var urgencySection:
+        some View {
+
+        VStack(
+            spacing: 5
+        ) {
+
             HStack {
-                Text("Not Urgent")
+
+                Text(
+                    "Not Urgent"
+                )
+
 
                 Spacer()
 
-                Text("Urgent")
-            }
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.55))
-
-            Slider(
-                value: $viewModel.urgency,
-                in: 0...1
-            )
-            .tint(Color("Color"))
-        }
-    }
-
-    // MARK: - Reason
-
-    private var reasonField: some View {
-        HStack {
-            TextField(
-                "",
-                text: $viewModel.reason,
-                prompt: Text("Explain why you want it")
-                    .foregroundStyle(.white.opacity(0.5))
-            )
-            .foregroundStyle(.white)
-
-            Image(systemName: "mic.fill")
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 18)
-        .frame(height: 64)
-        .background(Color.white.opacity(0.08))
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 22,
-                style: .continuous
-            )
-        )
-    }
-
-    // MARK: - Life Expectancy + Cost per unit
-
-    private var lifeExpectancySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            lifeExpectancyRow
-
-            if let text = costPerUnitText {
-                Text(text)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.75))
-                    .padding(.horizontal, 4)
-            }
-        }
-    }
-
-    private var lifeExpectancyRow: some View {
-        HStack(spacing: 12) {
-            TextField(
-                "",
-                text: $viewModel.lifeExpectancy,
-                prompt: Text("How long will you use it/ how many times?")
-                    .foregroundStyle(.white.opacity(0.5))
-            )
-            .keyboardType(.decimalPad)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .frame(height: 52)
-            .background(Color.white.opacity(0.08))
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 20,
-                    style: .continuous
-                )
-            )
-
-            Menu {
-                ForEach(
-                    ["times", "days", "months", "years"],
-                    id: \.self
-                ) { unit in
-                    Button(unit) {
-                        viewModel.lifeExpectancyUnit = unit
-                    }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Text(viewModel.lifeExpectancyUnit)
-
-                    Image(systemName: "chevron.down")
-                }
-                .foregroundStyle(.white.opacity(0.65))
-                .padding(.horizontal, 16)
-                .frame(height: 52)
-                .background(Color.white.opacity(0.08))
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
-                    )
-                )
-            }
-        }
-    }
-
-    // MARK: - Action Buttons
-
-    private var actionButtons: some View {
-        HStack(spacing: 10) {
-            Button("Save for later") {
-                didFinishPurchase = true
-
-                cooldownViewModel.addItem(
-                    name: viewModel.resultTitle,
-                    price: viewModel.resultPrice,
-                    cooldownHours: 24
-                )
-                withAnimation(.easeInOut(duration: 0.20)) {
-                    showCoolDownPopup = true
-                }
-
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background(Color("Color"))
-            .clipShape(Capsule())
-
-            Button("Buy anyway") {
-                didFinishPurchase = true
-                // نضيف الإجراء لاحقًا
-            }
-            .foregroundStyle(Color("Color"))
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background(Color.white.opacity(0.08))
-            .clipShape(Capsule())
-            
-        }
-        .font(.system(size: 16, weight: .medium))
-    }
-
-    // MARK: - Cool Down Popup
-
-    private var coolDownPopup: some View {
-        ZStack {
-            // تعتيم الصفحة الخلفية
-            Color.black.opacity(0.78)
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Text("Saved to your cool-down list")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.top, 30)
 
                 Text(
-                    "Come back in 24 hours and decide with a\nclearer mind."
+                    "Urgent"
                 )
-                .font(.system(size: 14))
-                .foregroundStyle(.white.opacity(0.80))
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.top, 5)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.20)) {
-                        showCoolDownPopup = false
-                    }
-                    goToCooldown = true
-                } label: {
-                    Text("Ok!")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color("Color"))
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 34)
-                .padding(.top, 26)
-                .padding(.bottom, 24)
             }
-            .frame(maxWidth: 350)
+            .font(
+                .system(
+                    size: 14,
+                    weight:
+                        .semibold
+                )
+            )
+            .foregroundStyle(
+                .white
+                    .opacity(
+                        0.55
+                    )
+            )
+
+
+            Slider(
+                value:
+                    $viewModel
+                    .urgency,
+
+                in:
+                    0...1
+            )
+            .tint(
+                Color("Color")
+            )
+        }
+    }
+
+
+    // MARK: - Working Microphone
+
+    private var reasonField:
+        some View {
+
+        HStack(
+            spacing: 12
+        ) {
+
+            TextField(
+                "",
+                text:
+                    $viewModel.reason,
+
+                prompt:
+                    Text(
+                        "Explain why you want it"
+                    )
+                    .foregroundStyle(
+                        .white
+                            .opacity(
+                                0.50
+                            )
+                    ),
+
+                axis:
+                    .vertical
+            )
+            .lineLimit(
+                1...4
+            )
+            .font(
+                .system(
+                    size: 17
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+
+
+            Button {
+
+                if speechRecognizer
+                    .isRecording {
+
+                    speechRecognizer
+                        .stopRecording()
+
+                } else {
+
+                    Task {
+
+                        let allowed =
+                            await speechRecognizer
+                                .requestAuthorization()
+
+
+                        guard allowed
+                        else {
+                            return
+                        }
+
+
+                        speechRecognizer
+                            .startRecording(
+                                existingText:
+                                    viewModel
+                                    .reason
+                            )
+                    }
+                }
+
+            } label: {
+
+                Image(
+                    systemName:
+                        speechRecognizer
+                            .isRecording
+
+                        ? "stop.fill"
+
+                        : "mic.fill"
+                )
+                .font(
+                    .system(
+                        size: 20,
+                        weight:
+                            .medium
+                    )
+                )
+                .foregroundStyle(
+
+                    speechRecognizer
+                        .isRecording
+
+                    ? Color.red
+
+                    : Color.white
+                )
+                .frame(
+                    width: 38,
+                    height: 38
+                )
+            }
+            .buttonStyle(
+                .plain
+            )
+        }
+        .padding(
+            .horizontal,
+            24
+        )
+        .frame(
+            minHeight: 82
+        )
+        .background(
+            Color.white
+                .opacity(
+                    0.08
+                )
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 30,
+                style:
+                    .continuous
+            )
+        )
+    }
+
+
+    // MARK: - Life Expectancy
+
+    private var lifeExpectancySection:
+        some View {
+
+        VStack(
+            alignment:
+                .leading,
+            spacing: 10
+        ) {
+
+            Text(
+                "How long will you use it/ how many times?"
+            )
+            .font(
+                .system(
+                    size: 15
+                )
+            )
+            .foregroundStyle(
+                .white
+                    .opacity(
+                        0.68
+                    )
+            )
+
+
+            HStack(
+                spacing: 16
+            ) {
+
+                TextField(
+                    "",
+                    text:
+                        $viewModel
+                        .lifeExpectancy,
+
+                    prompt:
+                        Text(
+                            "Number"
+                        )
+                        .foregroundStyle(
+                            .white
+                                .opacity(
+                                    0.45
+                                )
+                        )
+                )
+                .keyboardType(
+                    .decimalPad
+                )
+                .font(
+                    .system(
+                        size: 17
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
+                .padding(
+                    .horizontal,
+                    22
+                )
+                .frame(
+                    height: 64
+                )
+                .background(
+                    Color.white
+                        .opacity(
+                            0.08
+                        )
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius:
+                            28,
+
+                        style:
+                            .continuous
+                    )
+                )
+
+
+                Menu {
+
+                    ForEach(
+                        [
+                            "times",
+                            "days",
+                            "months",
+                            "years"
+                        ],
+
+                        id:
+                            \.self
+                    ) { unit in
+
+                        Button(
+                            unit
+                        ) {
+
+                            viewModel
+                                .lifeExpectancyUnit =
+                                unit
+                        }
+                    }
+
+                } label: {
+
+                    HStack(
+                        spacing: 12
+                    ) {
+
+                        Text(
+                            viewModel
+                                .lifeExpectancyUnit
+                        )
+
+
+                        Image(
+                            systemName:
+                                "chevron.down"
+                        )
+                    }
+                    .font(
+                        .system(
+                            size: 16,
+                            weight:
+                                .medium
+                        )
+                    )
+                    .foregroundStyle(
+                        .white
+                            .opacity(
+                                0.60
+                            )
+                    )
+                    .padding(
+                        .horizontal,
+                        20
+                    )
+                    .frame(
+                        height: 64
+                    )
+                    .background(
+                        Color.white
+                            .opacity(
+                                0.08
+                            )
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius:
+                                28,
+
+                            style:
+                                .continuous
+                        )
+                    )
+                }
+            }
+
+
+            if let text =
+                costPerUnitText {
+
+                Text(
+                    text
+                )
+                .font(
+                    .system(
+                        size: 12,
+                        weight:
+                            .medium
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                        .opacity(
+                            0.55
+                        )
+                )
+            }
+        }
+    }
+
+
+    // MARK: - Actions
+
+    private var actionButtons:
+        some View {
+
+        HStack(
+            spacing: 10
+        ) {
+
+            Button {
+
+                didFinishPurchase =
+                    true
+
+
+                cooldownViewModel
+                    .addItem(
+                        name:
+                            viewModel
+                            .itemName,
+
+                        price:
+                            viewModel
+                            .resultPrice,
+
+                        cooldownHours:
+                            24
+                    )
+
+
+                withAnimation {
+
+                    showCoolDownPopup =
+                        true
+                }
+
+            } label: {
+
+                Text(
+                    "Save for later"
+                )
+                .foregroundStyle(
+                    .white
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+                .frame(
+                    height: 46
+                )
+                .background(
+                    Color(
+                        red: 0.55,
+                        green: 0.48,
+                        blue: 0.84
+                    )
+                )
+                .clipShape(
+                    Capsule()
+                )
+            }
+
+
+            Button {
+
+                didFinishPurchase =
+                    true
+
+            } label: {
+
+                Text(
+                    "Buy anyway"
+                )
+                .foregroundStyle(
+                    Color(
+                        red: 0.55,
+                        green: 0.48,
+                        blue: 0.84
+                    )
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+                .frame(
+                    height: 46
+                )
+                .background(
+                    Color.white
+                        .opacity(
+                            0.10
+                        )
+                )
+                .clipShape(
+                    Capsule()
+                )
+            }
+        }
+        .font(
+            .system(
+                size: 16,
+                weight:
+                    .medium
+            )
+        )
+    }
+
+
+    // MARK: - Popup
+
+    private var coolDownPopup:
+        some View {
+
+        ZStack {
+
+            Color.black
+                .opacity(
+                    0.78
+                )
+                .ignoresSafeArea()
+
+
+            VStack(
+                spacing: 16
+            ) {
+
+                Text(
+                    "Saved to your cool-down list"
+                )
+                .font(
+                    .system(
+                        size: 17,
+                        weight:
+                            .semibold
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
+
+
+                Text(
+                    "Come back in 24 hours and decide with a clearer mind."
+                )
+                .font(
+                    .system(
+                        size: 14
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                        .opacity(
+                            0.80
+                        )
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+
+
+                Button(
+                    "Ok!"
+                ) {
+
+                    showCoolDownPopup =
+                        false
+
+                    goToCooldown =
+                        true
+                }
+                .foregroundStyle(
+                    .white
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+                .frame(
+                    height: 44
+                )
+                .background(
+                    Color("Color")
+                )
+                .clipShape(
+                    Capsule()
+                )
+            }
+            .padding(
+                28
+            )
+            .frame(
+                maxWidth: 350
+            )
             .background(
-                // لون داكن ثابت لبطاقة البوب‑أب
-                Color(red: 0.16, green: 0.16, blue: 0.18)
+                Color(
+                    red: 0.16,
+                    green: 0.16,
+                    blue: 0.18
+                )
             )
             .clipShape(
                 RoundedRectangle(
-                    cornerRadius: 28,
-                    style: .continuous
+                    cornerRadius: 28
                 )
             )
-            .overlay(
-                // حد خفيف لزيادة التباين مثل الصورة
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            .padding(
+                .horizontal,
+                28
             )
-            .padding(.horizontal, 28)
         }
-        .transition(
-            .opacity.combined(
-                with: .scale(scale: 0.96)
-            )
-        )
         .zIndex(10)
     }
-    // MARK: - Draft Saving
+
+
+    // MARK: - Draft
 
     private func saveDraftIfNeeded() {
-        guard !didFinishPurchase else { return }
-        guard !didSaveDraft else { return }
-        guard viewModel.hasDraftContent else { return }
 
-        draftStore.saveDraft(from: viewModel)
-        didSaveDraft = true
+        guard
+            !didFinishPurchase,
+            !didSaveDraft,
+            viewModel
+                .hasDraftContent
+        else {
+            return
+        }
+
+
+        draftStore
+            .saveDraft(
+                from:
+                    viewModel
+            )
+
+
+        didSaveDraft =
+            true
     }
-
-}
-
-#Preview {
-    NavigationStack {
-        PurchaseResult(
-            viewModel: PurchaseViewModel()
-        )
-        .preferredColorScheme(.dark)
-    }
-    .environmentObject(CooldownViewModel())
-    .environmentObject(DraftStore())
 }
