@@ -2,54 +2,74 @@
 //  PurchaseResult.swift
 //  AfterTaste
 //
-//  Created by Raghad Aljuid on 02/02/1448 AH.
-//
 
 import SwiftUI
 
 struct PurchaseResult: View {
 
-    // MARK: - State
-
-    @State
-    private var showCoolDownPopup = false
-
-    @State
-    private var goToCooldown = false
-
-    @State
-    private var didFinishPurchase = false
-
-    @State
-    private var didSaveDraft = false
-
-
     // MARK: - Environment
 
-    @EnvironmentObject
-    var cooldownViewModel:
-        CooldownViewModel
+    @Environment(\.dismiss)
+    private var dismiss
 
     @EnvironmentObject
-    private var draftStore:
-        DraftStore
+    var cooldownViewModel: CooldownViewModel
+
+    @EnvironmentObject
+    private var draftStore: DraftStore
 
 
     // MARK: - View Model
 
     @ObservedObject
-    var viewModel:
-        PurchaseViewModel
+    var viewModel: PurchaseViewModel
 
 
-    // MARK: - Timer Color
+    // MARK: - Speech
 
-    private let timerColor =
-        Color(
-            red: 176 / 255,
-            green: 115 / 255,
-            blue: 131 / 255
-        )
+    @StateObject
+    private var speechRecognizer =
+        SpeechRecognizer()
+
+
+    // MARK: - State
+
+    @State
+    private var showCoolDownPopup =
+        false
+
+    @State
+    private var goToCooldown =
+        false
+
+    @State
+    private var didFinishPurchase =
+        false
+
+    @State
+    private var didSaveDraft =
+        false
+
+
+    // MARK: - Navigation Title
+
+    /// Directly connected to the name
+    /// entered on the Purchase screen.
+    private var itemResultTitle: String {
+
+        let name =
+            viewModel
+                .itemName
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+
+
+        return name.isEmpty
+        ? "Item Result"
+        : "\(name) Result"
+    }
 
 
     // MARK: - Cost Per Unit
@@ -90,49 +110,37 @@ struct PurchaseResult: View {
 
         case "times":
 
-            let perUse =
-                price / count
-
             return String(
                 format:
                     "≈ $%.2f per use",
-                perUse
+                price / count
             )
 
 
         case "days":
 
-            let perDay =
-                price / count
-
             return String(
                 format:
                     "≈ $%.2f per day",
-                perDay
+                price / count
             )
 
 
         case "months":
 
-            let perMonth =
-                price / count
-
             return String(
                 format:
                     "≈ $%.2f per month",
-                perMonth
+                price / count
             )
 
 
         case "years":
 
-            let perYear =
-                price / count
-
             return String(
                 format:
                     "≈ $%.2f per year",
-                perYear
+                price / count
             )
 
 
@@ -153,21 +161,37 @@ struct PurchaseResult: View {
                 .ignoresSafeArea()
 
 
+            // Navigation is OUTSIDE ScrollView,
+            // so it never scrolls.
             VStack(spacing: 0) {
 
-                resultCard
+                customNavigationBar
                     .padding(
                         .horizontal,
-                        16
-                    )
-                    .padding(
-                        .top,
-                        40
+                        24
                     )
                     .padding(
                         .bottom,
-                        58
+                        18
                     )
+
+
+                ScrollView(
+                    .vertical,
+                    showsIndicators:
+                        false
+                ) {
+
+                    resultCard
+                        .padding(
+                            .horizontal,
+                            24
+                        )
+                        .padding(
+                            .bottom,
+                            120
+                        )
+                }
             }
 
 
@@ -176,23 +200,10 @@ struct PurchaseResult: View {
                 coolDownPopup
             }
         }
-        .navigationTitle(
-            viewModel.resultTitle
-        )
-        .navigationBarTitleDisplayMode(
-            .inline
-        )
-        .toolbarColorScheme(
-            .dark,
-            for: .navigationBar
-        )
-        .toolbarBackground(
-            Color.black,
-            for: .navigationBar
-        )
-        .toolbarBackground(
-            .visible,
-            for: .navigationBar
+        .toolbar(
+            .hidden,
+            for:
+                .navigationBar
         )
         .navigationDestination(
             isPresented:
@@ -203,20 +214,129 @@ struct PurchaseResult: View {
         }
         .onAppear {
 
-            // Ensure we always use
-            // the latest saved hourly rate.
-            viewModel.loadSavedHourlyRate()
+            viewModel
+                .loadSavedHourlyRate()
         }
         .onDisappear {
 
+            speechRecognizer
+                .stopRecording()
+
             saveDraftIfNeeded()
         }
+
+        // Whenever speech recognizer
+        // produces text, update reason.
+        .onReceive(
+            speechRecognizer
+                .$transcript
+        ) { newText in
+
+            guard
+                speechRecognizer
+                    .isRecording
+                ||
+                !newText.isEmpty
+            else {
+                return
+            }
+
+
+            viewModel.reason =
+                newText
+        }
+    }
+
+
+    // MARK: - Fixed Navigation Bar
+
+    private var customNavigationBar:
+        some View {
+
+        ZStack {
+
+            Text(
+                itemResultTitle
+            )
+            .font(
+                .system(
+                    size: 18,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+            .lineLimit(1)
+            .minimumScaleFactor(
+                0.75
+            )
+            .padding(
+                .horizontal,
+                70
+            )
+
+
+            HStack {
+
+                Button {
+
+                    dismiss()
+
+                } label: {
+
+                    Image(
+                        systemName:
+                            "chevron.left"
+                    )
+                    .font(
+                        .system(
+                            size: 22,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+                    .frame(
+                        width: 56,
+                        height: 56
+                    )
+                    .background(
+                        Color.white
+                            .opacity(0.07)
+                    )
+                    .clipShape(
+                        Circle()
+                    )
+                    .overlay {
+
+                        Circle()
+                            .stroke(
+                                Color.white
+                                    .opacity(0.25),
+                                lineWidth: 1
+                            )
+                    }
+                }
+                .buttonStyle(
+                    .plain
+                )
+
+
+                Spacer()
+            }
+        }
+        .frame(
+            height: 64
+        )
     }
 
 
     // MARK: - Result Card
 
-    private var resultCard: some View {
+    private var resultCard:
+        some View {
 
         VStack(spacing: 0) {
 
@@ -229,30 +349,30 @@ struct PurchaseResult: View {
                     weight: .bold
                 )
             )
-            .foregroundStyle(.white)
-            .padding(.top, 16)
+            .foregroundStyle(
+                .white
+            )
+            .padding(
+                .top,
+                20
+            )
 
 
-            // Shows calculated time immediately
             timeCounter
-                .padding(.top, 10)
-
-
-            Divider()
-                .overlay(
-                    .white.opacity(0.18)
-                )
-                .padding(
-                    .horizontal,
-                    18
-                )
                 .padding(
                     .top,
-                    18
+                    14
                 )
 
 
-            // MARK: Impulse / Planned
+            sectionDivider
+                .padding(
+                    .top,
+                    22
+                )
+
+
+            // Impulse / Planned
 
             choiceRow(
                 leftTitle:
@@ -287,17 +407,10 @@ struct PurchaseResult: View {
             )
 
 
-            Divider()
-                .overlay(
-                    .white.opacity(0.10)
-                )
-                .padding(
-                    .horizontal,
-                    18
-                )
+            rowDivider
 
 
-            // MARK: One Time / Subscription
+            // One time / Subscription
 
             choiceRow(
                 leftTitle:
@@ -332,17 +445,10 @@ struct PurchaseResult: View {
             )
 
 
-            Divider()
-                .overlay(
-                    .white.opacity(0.10)
-                )
-                .padding(
-                    .horizontal,
-                    18
-                )
+            rowDivider
 
 
-            // MARK: Need / Want
+            // Need / Want
 
             choiceRow(
                 leftTitle:
@@ -377,87 +483,88 @@ struct PurchaseResult: View {
             )
 
 
-            Divider()
-                .overlay(
-                    .white.opacity(0.18)
-                )
-                .padding(
-                    .horizontal,
-                    18
-                )
+            sectionDivider
 
 
-            urgencySlider
+            urgencySection
                 .padding(
                     .horizontal,
-                    18
+                    20
                 )
                 .padding(
                     .top,
-                    12
+                    20
                 )
 
 
             reasonField
                 .padding(
                     .horizontal,
-                    18
+                    20
                 )
                 .padding(
                     .top,
-                    18
+                    28
                 )
 
 
             lifeExpectancySection
                 .padding(
                     .horizontal,
-                    18
+                    20
                 )
                 .padding(
                     .top,
-                    14
+                    24
                 )
 
 
             actionButtons
                 .padding(
                     .horizontal,
-                    18
+                    20
                 )
                 .padding(
                     .top,
-                    22
+                    46
                 )
                 .padding(
                     .bottom,
-                    18
+                    20
                 )
         }
         .background(
-            Color.white.opacity(0.11)
+            Color(
+                red: 0.105,
+                green: 0.105,
+                blue: 0.115
+            )
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius: 30,
-                style: .continuous
+                cornerRadius: 38,
+                style:
+                    .continuous
             )
         )
     }
 
 
-    // MARK: - Time Equivalent
+    // MARK: - Time
 
     private var timeCounter:
         some View {
 
         Group {
 
-            if viewModel.hourlyRate > 0 {
+            if viewModel
+                .hourlyRate > 0 {
 
                 HStack(
-                    alignment: .top,
-                    spacing: 8
+                    alignment:
+                        .top,
+                    spacing:
+                        7
                 ) {
 
                     timeBox(
@@ -470,7 +577,7 @@ struct PurchaseResult: View {
                     )
 
 
-                    separator
+                    timeSeparator
 
 
                     timeBox(
@@ -483,7 +590,7 @@ struct PurchaseResult: View {
                     )
 
 
-                    separator
+                    timeSeparator
 
 
                     timeBox(
@@ -495,67 +602,40 @@ struct PurchaseResult: View {
                             "Minutes"
                     )
                 }
-                .accessibilityLabel(
-                    "Work time equivalent"
-                )
-                .accessibilityValue(
-                    """
-                    \(viewModel.daysRequired) days, \(viewModel.hoursRequired) hours, \(viewModel.minutesRequired) minutes
-                    """
-                )
 
             } else {
 
-                VStack(spacing: 8) {
-
-                    Image(
-                        systemName:
-                            "exclamationmark.circle"
+                Text(
+                    "Add your hourly rate in Settings"
+                )
+                .font(
+                    .system(
+                        size: 14
                     )
-                    .font(
-                        .system(size: 20)
-                    )
-                    .foregroundStyle(
-                        Color("Color")
-                    )
-
-
-                    Text(
-                        """
-                        Add your hourly rate in Settings to calculate the time equivalent.
-                        """
-                    )
-                    .font(
-                        .system(size: 13)
-                    )
-                    .foregroundStyle(
-                        .white.opacity(0.6)
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                }
-                .padding(
-                    .horizontal,
-                    24
+                )
+                .foregroundStyle(
+                    .white
+                        .opacity(
+                            0.6
+                        )
                 )
                 .padding(
                     .vertical,
-                    16
+                    22
                 )
             }
         }
     }
 
 
-    // MARK: - Time Box
-
     private func timeBox(
         value: Int,
         label: String
     ) -> some View {
 
-        VStack(spacing: 4) {
+        VStack(
+            spacing: 4
+        ) {
 
             Text(
                 String(
@@ -575,32 +655,62 @@ struct PurchaseResult: View {
                 .white
             )
             .frame(
-                width: 50,
-                height: 50
+                width: 48,
+                height: 48
             )
-            .background(
-                timerColor
-            )
+            .background {
+
+                LinearGradient(
+                    colors: [
+
+                        Color(
+                            red: 0.66,
+                            green: 0.43,
+                            blue: 0.53
+                        ),
+
+                        Color(
+                            red: 0.86,
+                            green: 0.35,
+                            blue: 0.24
+                        )
+                    ],
+
+                    startPoint:
+                        .bottomLeading,
+
+                    endPoint:
+                        .topTrailing
+                )
+            }
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: 10,
-                    style: .continuous
+                    style:
+                        .continuous
                 )
             )
 
 
-            Text(label)
-                .font(
-                    .system(size: 12)
+            Text(
+                label
+            )
+            .font(
+                .system(
+                    size: 12
                 )
-                .foregroundStyle(
-                    .white.opacity(0.85)
-                )
+            )
+            .foregroundStyle(
+                .white
+                    .opacity(
+                        0.85
+                    )
+            )
         }
     }
 
 
-    private var separator:
+    private var timeSeparator:
         some View {
 
         Text(":")
@@ -615,23 +725,63 @@ struct PurchaseResult: View {
             )
             .padding(
                 .top,
-                9
+                8
             )
     }
 
 
-    // MARK: - Choices
+    // MARK: - Dividers
+
+    private var sectionDivider:
+        some View {
+
+        Divider()
+            .overlay(
+                Color.white
+                    .opacity(
+                        0.20
+                    )
+            )
+            .padding(
+                .horizontal,
+                20
+            )
+    }
+
+
+    private var rowDivider:
+        some View {
+
+        Divider()
+            .overlay(
+                Color.white
+                    .opacity(
+                        0.07
+                    )
+            )
+            .padding(
+                .horizontal,
+                20
+            )
+    }
+
+
+    // MARK: - Choice Rows
 
     private func choiceRow(
         leftTitle: String,
         leftSelected: Bool,
         rightTitle: String,
         rightSelected: Bool,
-        leftAction: @escaping () -> Void,
-        rightAction: @escaping () -> Void
+        leftAction:
+            @escaping () -> Void,
+        rightAction:
+            @escaping () -> Void
     ) -> some View {
 
-        HStack {
+        HStack(
+            spacing: 0
+        ) {
 
             selectionButton(
                 title:
@@ -643,9 +793,13 @@ struct PurchaseResult: View {
                 action:
                     leftAction
             )
+            .frame(
+                maxWidth:
+                    .infinity,
 
-
-            Spacer()
+                alignment:
+                    .leading
+            )
 
 
             selectionButton(
@@ -658,19 +812,29 @@ struct PurchaseResult: View {
                 action:
                     rightAction
             )
+            .frame(
+                maxWidth:
+                    .infinity,
+
+                alignment:
+                    .leading
+            )
         }
         .padding(
             .horizontal,
-            22
+            20
         )
-        .frame(height: 64)
+        .frame(
+            height: 66
+        )
     }
 
 
     private func selectionButton(
         title: String,
         isSelected: Bool,
-        action: @escaping () -> Void
+        action:
+            @escaping () -> Void
     ) -> some View {
 
         Button(
@@ -678,84 +842,114 @@ struct PurchaseResult: View {
                 action
         ) {
 
-            HStack(spacing: 10) {
+            HStack(
+                spacing: 14
+            ) {
 
-                Circle()
-                    .stroke(
+                ZStack {
 
-                        isSelected
+                    Circle()
+                        .stroke(
+                            isSelected
+                            ? Color(
+                                red: 0.55,
+                                green: 0.48,
+                                blue: 0.86
+                            )
 
-                        ? Color("Color")
+                            : Color.white
+                                .opacity(
+                                    0.22
+                                ),
 
-                        : Color.white
-                            .opacity(0.25),
+                            lineWidth:
+                                2.5
+                        )
+                        .frame(
+                            width: 24,
+                            height: 24
+                        )
 
-                        lineWidth: 3
-                    )
-                    .frame(
-                        width: 22,
-                        height: 22
-                    )
-                    .overlay {
 
-                        if isSelected {
+                    if isSelected {
 
-                            Circle()
-                                .fill(
-                                    Color("Color")
+                        Circle()
+                            .fill(
+                                Color(
+                                    red: 0.55,
+                                    green: 0.48,
+                                    blue: 0.86
                                 )
-                                .frame(
-                                    width: 10,
-                                    height: 10
-                                )
-                        }
+                            )
+                            .frame(
+                                width: 12,
+                                height: 12
+                            )
                     }
+                }
 
 
-                Text(title)
-                    .font(
-                        .system(size: 16)
+                Text(
+                    title
+                )
+                .font(
+                    .system(
+                        size: 17
                     )
-                    .foregroundStyle(
-                        .white
-                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .plain
+        )
     }
 
 
     // MARK: - Urgency
 
-    private var urgencySlider:
+    private var urgencySection:
         some View {
 
-        VStack(spacing: 0) {
+        VStack(
+            spacing: 5
+        ) {
 
             HStack {
 
-                Text("Not Urgent")
+                Text(
+                    "Not Urgent"
+                )
 
 
                 Spacer()
 
 
-                Text("Urgent")
+                Text(
+                    "Urgent"
+                )
             }
             .font(
                 .system(
-                    size: 13,
-                    weight: .semibold
+                    size: 14,
+                    weight:
+                        .semibold
                 )
             )
             .foregroundStyle(
-                .white.opacity(0.55)
+                .white
+                    .opacity(
+                        0.55
+                    )
             )
 
 
             Slider(
                 value:
-                    $viewModel.urgency,
+                    $viewModel
+                    .urgency,
 
                 in:
                     0...1
@@ -767,12 +961,14 @@ struct PurchaseResult: View {
     }
 
 
-    // MARK: - Reason
+    // MARK: - Working Microphone
 
     private var reasonField:
         some View {
 
-        HStack {
+        HStack(
+            spacing: 12
+        ) {
 
             TextField(
                 "",
@@ -784,34 +980,114 @@ struct PurchaseResult: View {
                         "Explain why you want it"
                     )
                     .foregroundStyle(
-                        .white.opacity(0.5)
+                        .white
+                            .opacity(
+                                0.50
+                            )
+                    ),
+
+                axis:
+                    .vertical
+            )
+            .lineLimit(
+                1...4
+            )
+            .font(
+                .system(
+                    size: 17
+                )
+            )
+            .foregroundStyle(
+                .white
+            )
+
+
+            Button {
+
+                if speechRecognizer
+                    .isRecording {
+
+                    speechRecognizer
+                        .stopRecording()
+
+                } else {
+
+                    Task {
+
+                        let allowed =
+                            await speechRecognizer
+                                .requestAuthorization()
+
+
+                        guard allowed
+                        else {
+                            return
+                        }
+
+
+                        speechRecognizer
+                            .startRecording(
+                                existingText:
+                                    viewModel
+                                    .reason
+                            )
+                    }
+                }
+
+            } label: {
+
+                Image(
+                    systemName:
+                        speechRecognizer
+                            .isRecording
+
+                        ? "stop.fill"
+
+                        : "mic.fill"
+                )
+                .font(
+                    .system(
+                        size: 20,
+                        weight:
+                            .medium
                     )
-            )
-            .foregroundStyle(
-                .white
-            )
+                )
+                .foregroundStyle(
 
+                    speechRecognizer
+                        .isRecording
 
-            Image(
-                systemName:
-                    "mic.fill"
-            )
-            .foregroundStyle(
-                .white
+                    ? Color.red
+
+                    : Color.white
+                )
+                .frame(
+                    width: 38,
+                    height: 38
+                )
+            }
+            .buttonStyle(
+                .plain
             )
         }
         .padding(
             .horizontal,
-            18
+            24
         )
-        .frame(height: 64)
+        .frame(
+            minHeight: 82
+        )
         .background(
-            Color.white.opacity(0.08)
+            Color.white
+                .opacity(
+                    0.08
+                )
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius: 22,
-                style: .continuous
+                cornerRadius: 30,
+                style:
+                    .continuous
             )
         )
     }
@@ -823,128 +1099,181 @@ struct PurchaseResult: View {
         some View {
 
         VStack(
-            alignment: .leading,
-            spacing: 8
+            alignment:
+                .leading,
+            spacing: 10
         ) {
 
-            lifeExpectancyRow
+            Text(
+                "How long will you use it/ how many times?"
+            )
+            .font(
+                .system(
+                    size: 15
+                )
+            )
+            .foregroundStyle(
+                .white
+                    .opacity(
+                        0.68
+                    )
+            )
+
+
+            HStack(
+                spacing: 16
+            ) {
+
+                TextField(
+                    "",
+                    text:
+                        $viewModel
+                        .lifeExpectancy,
+
+                    prompt:
+                        Text(
+                            "Number"
+                        )
+                        .foregroundStyle(
+                            .white
+                                .opacity(
+                                    0.45
+                                )
+                        )
+                )
+                .keyboardType(
+                    .decimalPad
+                )
+                .font(
+                    .system(
+                        size: 17
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
+                .padding(
+                    .horizontal,
+                    22
+                )
+                .frame(
+                    height: 64
+                )
+                .background(
+                    Color.white
+                        .opacity(
+                            0.08
+                        )
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius:
+                            28,
+
+                        style:
+                            .continuous
+                    )
+                )
+
+
+                Menu {
+
+                    ForEach(
+                        [
+                            "times",
+                            "days",
+                            "months",
+                            "years"
+                        ],
+
+                        id:
+                            \.self
+                    ) { unit in
+
+                        Button(
+                            unit
+                        ) {
+
+                            viewModel
+                                .lifeExpectancyUnit =
+                                unit
+                        }
+                    }
+
+                } label: {
+
+                    HStack(
+                        spacing: 12
+                    ) {
+
+                        Text(
+                            viewModel
+                                .lifeExpectancyUnit
+                        )
+
+
+                        Image(
+                            systemName:
+                                "chevron.down"
+                        )
+                    }
+                    .font(
+                        .system(
+                            size: 16,
+                            weight:
+                                .medium
+                        )
+                    )
+                    .foregroundStyle(
+                        .white
+                            .opacity(
+                                0.60
+                            )
+                    )
+                    .padding(
+                        .horizontal,
+                        20
+                    )
+                    .frame(
+                        height: 64
+                    )
+                    .background(
+                        Color.white
+                            .opacity(
+                                0.08
+                            )
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius:
+                                28,
+
+                            style:
+                                .continuous
+                        )
+                    )
+                }
+            }
 
 
             if let text =
                 costPerUnitText {
 
-                Text(text)
-                    .font(
-                        .system(
-                            size: 12,
-                            weight: .medium
-                        )
-                    )
-                    .foregroundColor(
-                        .white.opacity(0.75)
-                    )
-                    .padding(
-                        .horizontal,
-                        4
-                    )
-            }
-        }
-    }
-
-
-    private var lifeExpectancyRow:
-        some View {
-
-        HStack(spacing: 12) {
-
-            TextField(
-                "",
-                text:
-                    $viewModel
-                    .lifeExpectancy,
-
-                prompt:
-                    Text(
-                        "How long will you use it/ how many times?"
-                    )
-                    .foregroundStyle(
-                        .white.opacity(0.5)
-                    )
-            )
-            .keyboardType(
-                .decimalPad
-            )
-            .foregroundStyle(
-                .white
-            )
-            .padding(
-                .horizontal,
-                18
-            )
-            .frame(height: 52)
-            .background(
-                Color.white.opacity(0.08)
-            )
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 20,
-                    style: .continuous
+                Text(
+                    text
                 )
-            )
-
-
-            Menu {
-
-                ForEach(
-                    [
-                        "times",
-                        "days",
-                        "months",
-                        "years"
-                    ],
-
-                    id: \.self
-                ) { unit in
-
-                    Button(unit) {
-
-                        viewModel
-                            .lifeExpectancyUnit =
-                            unit
-                    }
-                }
-
-            } label: {
-
-                HStack(spacing: 8) {
-
-                    Text(
-                        viewModel
-                            .lifeExpectancyUnit
+                .font(
+                    .system(
+                        size: 12,
+                        weight:
+                            .medium
                     )
-
-
-                    Image(
-                        systemName:
-                            "chevron.down"
-                    )
-                }
+                )
                 .foregroundStyle(
-                    .white.opacity(0.65)
-                )
-                .padding(
-                    .horizontal,
-                    16
-                )
-                .frame(height: 52)
-                .background(
-                    Color.white.opacity(0.08)
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
-                    )
+                    .white
+                        .opacity(
+                            0.55
+                        )
                 )
             }
         }
@@ -956,11 +1285,11 @@ struct PurchaseResult: View {
     private var actionButtons:
         some View {
 
-        HStack(spacing: 10) {
+        HStack(
+            spacing: 10
+        ) {
 
-            Button(
-                "Save for later"
-            ) {
+            Button {
 
                 didFinishPurchase =
                     true
@@ -968,7 +1297,6 @@ struct PurchaseResult: View {
 
                 cooldownViewModel
                     .addItem(
-
                         name:
                             viewModel
                             .itemName,
@@ -982,62 +1310,86 @@ struct PurchaseResult: View {
                     )
 
 
-                withAnimation(
-                    .easeInOut(
-                        duration: 0.20
-                    )
-                ) {
+                withAnimation {
 
                     showCoolDownPopup =
                         true
                 }
+
+            } label: {
+
+                Text(
+                    "Save for later"
+                )
+                .foregroundStyle(
+                    .white
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+                .frame(
+                    height: 46
+                )
+                .background(
+                    Color(
+                        red: 0.55,
+                        green: 0.48,
+                        blue: 0.84
+                    )
+                )
+                .clipShape(
+                    Capsule()
+                )
             }
-            .foregroundStyle(
-                .white
-            )
-            .frame(
-                maxWidth: .infinity
-            )
-            .frame(height: 44)
-            .background(
-                Color("Color")
-            )
-            .clipShape(
-                Capsule()
-            )
 
 
-            Button(
-                "Buy anyway"
-            ) {
+            Button {
 
                 didFinishPurchase =
                     true
+
+            } label: {
+
+                Text(
+                    "Buy anyway"
+                )
+                .foregroundStyle(
+                    Color(
+                        red: 0.55,
+                        green: 0.48,
+                        blue: 0.84
+                    )
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+                .frame(
+                    height: 46
+                )
+                .background(
+                    Color.white
+                        .opacity(
+                            0.10
+                        )
+                )
+                .clipShape(
+                    Capsule()
+                )
             }
-            .foregroundStyle(
-                Color("Color")
-            )
-            .frame(
-                maxWidth: .infinity
-            )
-            .frame(height: 44)
-            .background(
-                Color.white.opacity(0.08)
-            )
-            .clipShape(
-                Capsule()
-            )
         }
         .font(
             .system(
                 size: 16,
-                weight: .medium
+                weight:
+                    .medium
             )
         )
     }
 
 
-    // MARK: - Cool Down Popup
+    // MARK: - Popup
 
     private var coolDownPopup:
         some View {
@@ -1045,11 +1397,15 @@ struct PurchaseResult: View {
         ZStack {
 
             Color.black
-                .opacity(0.78)
+                .opacity(
+                    0.78
+                )
                 .ignoresSafeArea()
 
 
-            VStack(spacing: 0) {
+            VStack(
+                spacing: 16
+            ) {
 
                 Text(
                     "Saved to your cool-down list"
@@ -1057,96 +1413,64 @@ struct PurchaseResult: View {
                 .font(
                     .system(
                         size: 17,
-                        weight: .semibold
+                        weight:
+                            .semibold
                     )
                 )
                 .foregroundStyle(
                     .white
                 )
-                .padding(
-                    .top,
-                    30
-                )
 
 
                 Text(
-                    """
-                    Come back in 24 hours and decide with a
-                    clearer mind.
-                    """
+                    "Come back in 24 hours and decide with a clearer mind."
                 )
                 .font(
-                    .system(size: 14)
+                    .system(
+                        size: 14
+                    )
                 )
                 .foregroundStyle(
-                    .white.opacity(0.80)
+                    .white
+                        .opacity(
+                            0.80
+                        )
                 )
                 .multilineTextAlignment(
                     .center
                 )
-                .lineSpacing(3)
-                .padding(
-                    .top,
-                    5
-                )
 
 
-                Button {
+                Button(
+                    "Ok!"
+                ) {
 
-                    withAnimation(
-                        .easeInOut(
-                            duration: 0.20
-                        )
-                    ) {
-
-                        showCoolDownPopup =
-                            false
-                    }
-
+                    showCoolDownPopup =
+                        false
 
                     goToCooldown =
                         true
-
-                } label: {
-
-                    Text("Ok!")
-                        .font(
-                            .system(
-                                size: 17,
-                                weight: .medium
-                            )
-                        )
-                        .foregroundStyle(
-                            .white
-                        )
-                        .frame(
-                            maxWidth:
-                                .infinity
-                        )
-                        .frame(height: 44)
-                        .background(
-                            Color("Color")
-                        )
-                        .clipShape(
-                            Capsule()
-                        )
                 }
-                .buttonStyle(
-                    .plain
+                .foregroundStyle(
+                    .white
                 )
-                .padding(
-                    .horizontal,
-                    34
+                .frame(
+                    maxWidth:
+                        .infinity
                 )
-                .padding(
-                    .top,
-                    26
+                .frame(
+                    height: 44
                 )
-                .padding(
-                    .bottom,
-                    24
+                .background(
+                    Color("Color")
+                )
+                .clipShape(
+                    Capsule()
                 )
             }
+            .padding(
+                28
+            )
             .frame(
                 maxWidth: 350
             )
@@ -1159,21 +1483,7 @@ struct PurchaseResult: View {
             )
             .clipShape(
                 RoundedRectangle(
-                    cornerRadius: 28,
-                    style: .continuous
-                )
-            )
-            .overlay(
-
-                RoundedRectangle(
-                    cornerRadius: 28,
-                    style: .continuous
-                )
-                .stroke(
-                    Color.white
-                        .opacity(0.10),
-
-                    lineWidth: 1
+                    cornerRadius: 28
                 )
             )
             .padding(
@@ -1181,85 +1491,32 @@ struct PurchaseResult: View {
                 28
             )
         }
-        .transition(
-            .opacity
-                .combined(
-                    with:
-                        .scale(
-                            scale: 0.96
-                        )
-                )
-        )
         .zIndex(10)
     }
 
 
-    // MARK: - Draft Saving
+    // MARK: - Draft
 
     private func saveDraftIfNeeded() {
 
-        guard !didFinishPurchase
+        guard
+            !didFinishPurchase,
+            !didSaveDraft,
+            viewModel
+                .hasDraftContent
         else {
             return
         }
 
 
-        guard !didSaveDraft
-        else {
-            return
-        }
-
-
-        guard viewModel.hasDraftContent
-        else {
-            return
-        }
-
-
-        draftStore.saveDraft(
-            from:
-                viewModel
-        )
+        draftStore
+            .saveDraft(
+                from:
+                    viewModel
+            )
 
 
         didSaveDraft =
             true
     }
-}
-
-
-// MARK: - Preview
-
-#Preview {
-
-    let vm =
-        PurchaseViewModel()
-
-
-    vm.itemName =
-        "AirPods"
-
-    vm.price =
-        "500"
-
-    vm.hourlyRate =
-        50
-
-
-    return NavigationStack {
-
-        PurchaseResult(
-            viewModel:
-                vm
-        )
-    }
-    .environmentObject(
-        CooldownViewModel()
-    )
-    .environmentObject(
-        DraftStore()
-    )
-    .preferredColorScheme(
-        .dark
-    )
 }
