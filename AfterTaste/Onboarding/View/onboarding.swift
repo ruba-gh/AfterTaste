@@ -17,8 +17,6 @@ import SwiftUI
 struct onboarding: View {
     var body: some View {
         ZStack {
-            Color.black
-                .ignoresSafeArea()
 
             Image("Union")
                 .resizable()

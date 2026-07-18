@@ -179,7 +179,7 @@ struct Setup: View {
             amountField(
                 placeholder: "Amount",
                 text: $incomeAmount,
-                trailingText: "0 $"
+                trailingText: "$"
             )
             .padding(.top, 10)
             
