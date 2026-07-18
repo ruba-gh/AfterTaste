@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var purchaseVM = PurchaseViewModel()
+    @StateObject private var draftStore = DraftStore()
+
     @State private var selectedTab = 0
 
     init() {
@@ -119,6 +121,7 @@ struct ContentView: View {
 
         // Forces dark mode throughout the entire app
         .preferredColorScheme(.dark)
+        .environmentObject(draftStore)
     }
 }
 

@@ -9,7 +9,11 @@ import SwiftUI
 struct PurchaseResult: View {
     @State private var showCoolDownPopup = false
     @State private var goToCooldown = false
+    @State private var didFinishPurchase = false
+    @State private var didSaveDraft = false
+
     @EnvironmentObject var cooldownViewModel: CooldownViewModel
+    @EnvironmentObject private var draftStore: DraftStore
     @ObservedObject var viewModel: PurchaseViewModel
 
     private let timerColor = Color(
@@ -42,6 +46,9 @@ struct PurchaseResult: View {
         .preferredColorScheme(.dark)
         .navigationDestination(isPresented: $goToCooldown) {
             CooldownView()
+        }
+        .onDisappear {
+            saveDraftIfNeeded()
         }
     }
 
@@ -364,6 +371,7 @@ struct PurchaseResult: View {
     private var actionButtons: some View {
         HStack(spacing: 10) {
             Button("Save for later") {
+                didFinishPurchase = true
 
                 cooldownViewModel.addItem(
                     name: viewModel.resultTitle,
@@ -382,6 +390,7 @@ struct PurchaseResult: View {
             .clipShape(Capsule())
 
             Button("Buy anyway") {
+                didFinishPurchase = true
                 // نضيف الإجراء لاحقًا
             }
             .foregroundStyle(Color("Color"))
@@ -461,6 +470,17 @@ struct PurchaseResult: View {
         )
         .zIndex(10)
     }
+    // MARK: - Draft Saving
+
+    private func saveDraftIfNeeded() {
+        guard !didFinishPurchase else { return }
+        guard !didSaveDraft else { return }
+        guard viewModel.hasDraftContent else { return }
+
+        draftStore.saveDraft(from: viewModel)
+        didSaveDraft = true
+    }
+
 }
 
 #Preview {
@@ -471,4 +491,5 @@ struct PurchaseResult: View {
         .preferredColorScheme(.dark)
     }
     .environmentObject(CooldownViewModel())
+    .environmentObject(DraftStore())
 }

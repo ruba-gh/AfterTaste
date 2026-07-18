@@ -51,9 +51,7 @@ struct CooldownView: View {
                         }
 
                     case "Drafts":
-                        ScrollView(.vertical, showsIndicators: false) {
-                            placeholderContent(for: "Drafts")
-                        }
+                        DraftsView()
 
                     default:
                         EmptyView()
