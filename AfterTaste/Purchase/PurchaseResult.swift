@@ -374,7 +374,7 @@ struct PurchaseResult: View {
                 didFinishPurchase = true
 
                 cooldownViewModel.addItem(
-                    name: viewModel.resultTitle,
+                    name: viewModel.itemName.trimmingCharacters(in: .whitespacesAndNewlines),
                     price: viewModel.resultPrice,
                     cooldownHours: 24
                 )

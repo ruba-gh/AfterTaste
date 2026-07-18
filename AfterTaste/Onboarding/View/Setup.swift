@@ -20,11 +20,34 @@ struct Setup: View {
 
     private var estimatedHourlyRate: Double {
         IncomeEstimator.hourlyRate(
-            income: Double(incomeAmount) ?? 0,
+            income: parsedNumber(incomeAmount) ?? 0,
             type: selectedIncomeType,
-            workHours: Double(workHours) ?? 8,
-            workDays: Double(workDays) ?? 5
+            workHours: parsedNumber(workHours) ?? 8,
+            workDays: parsedNumber(workDays) ?? 5
         )
+    }
+
+    /// يفكّ رموز الأرقام المكتوبة بفاصلة آلاف (5,000) أو فاصلة عشرية محلية (8,5)
+    /// حتى ما يفشل التحليل بصمت ويرجّع صفر بدون تنبيه.
+    private func parsedNumber(_ text: String) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // رقم سليم مباشرة (فاصلة عشرية إنجليزية أو بدون فواصل)
+        if let value = Double(trimmed) { return value }
+
+        guard trimmed.contains(",") else { return nil }
+
+        // ميّزي فاصل الآلاف (مجموعات من 3 أرقام: "5,000" أو "12,345,678")
+        // عن الفاصلة العشرية المحلية (رقم أو رقمين بعدها: "8,5" أو "3,14")
+        let groups = trimmed.components(separatedBy: ",")
+        let looksLikeThousandsSeparator = groups.dropFirst().allSatisfy { $0.count == 3 && $0.allSatisfy(\.isNumber) }
+
+        if looksLikeThousandsSeparator {
+            return Double(trimmed.replacingOccurrences(of: ",", with: ""))
+        } else {
+            return Double(trimmed.replacingOccurrences(of: ",", with: "."))
+        }
     }
     var body: some View  {
         ZStack(alignment: .top) {
@@ -114,7 +137,7 @@ struct Setup: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .padding(.top, 28)
-            
+
             Menu {
                 Picker("", selection: $selectedIncomeType) {
                     ForEach(IncomeType.allCases, id: \.self) { type in
@@ -140,7 +163,14 @@ struct Setup: View {
                 .cornerRadius(18)
             }
             .padding(.top, 10)
-            
+
+            // تنبيه: تأكدي إن هذا الاختيار يطابق الرقم اللي بتكتبينه بالأسفل
+            // (سبب شائع لنتيجة غير منطقية هو نسيان تغييره لو الدخل سنوي مثلاً)
+            Text("Make sure this matches the amount below (e.g. don't leave \"Monthly\" if your number is yearly).")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.4))
+                .padding(.top, 6)
+
             Text("I receive")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
@@ -153,31 +183,21 @@ struct Setup: View {
             )
             .padding(.top, 10)
             
-            Text("Working hours")
+            Text("Working hours per day")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .padding(.top, 18)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.top, 18)
-            
+
             HStack {
-                
-                HStack(spacing: 6) {
-           
-                       
-                    
-                }
-                
                 Spacer()
-                
+
                 TextField("8", text: $workHours)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .foregroundColor(.white)
                     .font(.system(size: 16))
                     .frame(width: 60)
-                
+
                 Text("hrs")
                     .font(.system(size: 16))
                     .foregroundColor(.white.opacity(0.5))
@@ -187,7 +207,32 @@ struct Setup: View {
             .background(Color.white.opacity(0.12))
             .cornerRadius(18)
             .padding(.top, 10)
-            
+
+            Text("Working days per week")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.top, 18)
+
+            HStack {
+                Spacer()
+
+                TextField("5", text: $workDays)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundColor(.white)
+                    .font(.system(size: 16))
+                    .frame(width: 60)
+
+                Text("days")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(Color.white.opacity(0.12))
+            .cornerRadius(18)
+            .padding(.top, 10)
+
             Text("Estimation")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
@@ -199,7 +244,7 @@ struct Setup: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                     
-                    Text("based on ~22 working days / month")
+                    Text("based on ~\(Int(((parsedNumber(workDays) ?? 5) * 4.33).rounded())) working days / month")
                         .font(.system(size: 11))
                         .foregroundColor(.black.opacity(0.65))
                 }
