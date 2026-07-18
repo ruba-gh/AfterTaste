@@ -89,7 +89,7 @@ struct DraftDecisionSheet: View {
 
     // MARK: - Subviews
 
-    // بطاقة العنصر بنفس ستايل FigmaItemCard
+    // بطاقة العنصر باللون الرمادي الداكن (مثل التصميم)، مع كبسولة التدرج على اليمين
     private var productCard: some View {
         HStack(spacing: 14) {
             Text(itemName.isEmpty ? "Unnamed item" : itemName)
@@ -103,7 +103,6 @@ struct DraftDecisionSheet: View {
 
             Spacer()
 
-            // كبسولة "2 Days to Cool" بتدرج مطابق
             Text("2 Days to Cool")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white)
@@ -123,9 +122,13 @@ struct DraftDecisionSheet: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .frame(height: 52)
         .background(Color("Button"))
-        .cornerRadius(12)
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 22,
+                style: .continuous
+            )
+        )
     }
 
     private var choicesRow: some View {
@@ -163,7 +166,6 @@ struct DraftDecisionSheet: View {
         .padding(.horizontal, 4)
     }
 
-    // زر Pill بنفس التدرج عند التحديد وإصلاح مشكلة الخلفية
     private func pillChoice(
         title: String,
         isSelected: Bool,
@@ -217,8 +219,7 @@ struct DraftDecisionSheet: View {
                 }
             }
             .padding(.horizontal, 18)
-            .frame(minHeight: 64)
-            .frame(height: 64)
+            .padding(.vertical, 14)
             .background(Color.white.opacity(0.08))
             .clipShape(
                 RoundedRectangle(
@@ -232,7 +233,6 @@ struct DraftDecisionSheet: View {
     private var actionButtons: some View {
         HStack(spacing: 10) {
             Button {
-                // Buy: حالياً فقط إغلاق الشيت
                 dismiss()
             } label: {
                 Text("Buy")
@@ -250,16 +250,24 @@ struct DraftDecisionSheet: View {
             } label: {
                 Text("More time")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color("Color"))
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(Color.white.opacity(0.08))
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.99, green: 0.47, blue: 0.30),
+                                Color(red: 0.97, green: 0.36, blue: 0.18)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
 
             Button {
-                // Don't buy: نغلق الشيت ونحذف المسودة إن رغبتِ
                 draftStore.removeDraft(draft)
                 dismiss()
             } label: {
@@ -268,7 +276,7 @@ struct DraftDecisionSheet: View {
                     .foregroundColor(.white.opacity(0.6))
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(Color.white.opacity(0.02))
+                    .background(Color.white.opacity(0.06))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
