@@ -12,6 +12,9 @@ struct PurchaseResult: View {
     @State private var didFinishPurchase = false
     @State private var didSaveDraft = false
 
+    // نقطة بداية العدّاد
+    @State private var startDate = Date()
+
     @EnvironmentObject var cooldownViewModel: CooldownViewModel
     @EnvironmentObject private var draftStore: DraftStore
     @ObservedObject var viewModel: PurchaseViewModel
@@ -21,6 +24,13 @@ struct PurchaseResult: View {
         green: 115 / 255,
         blue: 131 / 255
     )
+
+    // إجمالي الثواني المطلوبة = السعر / الأجر بالساعة × 3600
+    private var totalSecondsRequired: Int {
+        let hourly = max(viewModel.hourlyRate, 0.0001) // حماية من القسمة على صفر
+        let seconds = (viewModel.numericPrice / hourly) * 3600
+        return max(0, Int(seconds.rounded()))
+    }
 
     var body: some View {
         ZStack {
@@ -46,6 +56,10 @@ struct PurchaseResult: View {
         .preferredColorScheme(.dark)
         .navigationDestination(isPresented: $goToCooldown) {
             CooldownView()
+        }
+        .onAppear {
+            // ابدأ العدّاد من الآن
+            startDate = Date()
         }
         .onDisappear {
             saveDraftIfNeeded()
@@ -146,28 +160,31 @@ struct PurchaseResult: View {
         )
     }
 
-    // MARK: - Time Counter
+    // MARK: - Time Counter (Animated)
 
+    // عدّاد تصاعدي من 0 حتى totalSecondsRequired
     private var timeCounter: some View {
-        HStack(alignment: .top, spacing: 8) {
-            timeBox(
-                value: viewModel.daysRequired,
-                label: "Day"
-            )
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = max(0, Int(context.date.timeIntervalSince(startDate)))
+            let current = min(elapsed, totalSecondsRequired)
 
-            separator
+            let days = current / 86_400
+            let hours = (current % 86_400) / 3_600
+            let minutes = (current % 3_600) / 60
+            let seconds = current % 60
 
-            timeBox(
-                value: viewModel.hoursRequired,
-                label: "Hours"
-            )
-
-            separator
-
-            timeBox(
-                value: viewModel.minutesRequired,
-                label: "Minutes"
-            )
+            HStack(alignment: .top, spacing: 8) {
+                timeBox(value: days, label: "Day")
+                separator
+                timeBox(value: hours, label: "Hours")
+                separator
+                timeBox(value: minutes, label: "Minutes")
+                // لو تبين الثواني:
+                // separator
+                // timeBox(value: seconds, label: "Seconds")
+            }
+            .accessibilityLabel("Elapsed time towards this purchase")
+            .accessibilityValue("\(days) days, \(hours) hours, \(minutes) minutes, \(seconds) seconds")
         }
     }
 
