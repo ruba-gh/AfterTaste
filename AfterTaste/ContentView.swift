@@ -5,11 +5,21 @@
 //  Created by Ruba Alghamdi on 29/01/1448 AH.
 //
 
+//
+//  ContentView.swift
+//  AfterTaste
+//
+//  Created by Ruba Alghamdi on 29/01/1448 AH.
+//
+
 import SwiftUI
 
 struct ContentView: View {
     @StateObject private var purchaseVM = PurchaseViewModel()
+    @StateObject private var draftStore = DraftStore()
+    
     @State private var selectedTab = 0
+    
 
     init() {
         let appearance = UITabBarAppearance()
@@ -119,6 +129,7 @@ struct ContentView: View {
 
         // Forces dark mode throughout the entire app
         .preferredColorScheme(.dark)
+        .environmentObject(draftStore)
     }
 }
 

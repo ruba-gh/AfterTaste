@@ -51,10 +51,14 @@ struct CooldownView: View {
                         HistoryView()
 
                     case "Drafts":
+<<<<<<< HEAD
                         // صفحة Drafts (تُبنى لاحقاً)
                         ScrollView(.vertical, showsIndicators: false) {
                             placeholderContent(for: "Drafts")
                         }
+=======
+                        DraftsView()
+>>>>>>> main
 
                     default:
                         EmptyView()
