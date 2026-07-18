@@ -473,6 +473,10 @@ struct AfterTasteView: View {
     }
 }
 
+// MARK: - Model
+
+
+
 enum ReflectionChoice {
     case happy
     case regret

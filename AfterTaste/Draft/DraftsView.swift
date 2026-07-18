@@ -8,6 +8,8 @@ import SwiftUI
 
 struct DraftsView: View {
     @EnvironmentObject private var draftStore: DraftStore
+    @EnvironmentObject private var cooldownViewModel: CooldownViewModel
+    @State private var selectedDraft: PurchaseDraft?
 
     var body: some View {
         ScrollView(
@@ -58,6 +60,14 @@ struct DraftsView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 110)
         }
+        .sheet(item: $selectedDraft) { draft in
+            DraftDecisionSheet(draft: draft)
+                .environmentObject(draftStore)
+                .environmentObject(cooldownViewModel)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+                .preferredColorScheme(.dark)
+        }
     }
 
     private func draftRow(
@@ -80,7 +90,7 @@ struct DraftsView: View {
                 .foregroundStyle(.white)
 
             Button {
-                continueDraft(draft)
+                selectedDraft = draft
             } label: {
                 Text("Continue")
                     .font(
@@ -144,8 +154,7 @@ struct DraftsView: View {
     ) {
         print("Continue draft: \(draft.itemName)")
 
-        // الخطوة التالية:
-        // نرجع PurchaseResult بنفس بيانات المسودة.
+        // سيتم فتح الشيت الجديد DraftDecisionSheet أعلاه.
     }
 }
 
@@ -156,6 +165,7 @@ struct DraftsView: View {
 
         DraftsView()
             .environmentObject(DraftStore())
+            .environmentObject(CooldownViewModel())
     }
     .preferredColorScheme(.dark)
 }
