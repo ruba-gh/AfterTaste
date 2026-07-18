@@ -34,6 +34,9 @@ struct CooldownItem: Identifiable {
     var reflectionText: String = ""
     var reflectionChoice: ReflectionChoice? = nil
 
+    // نتيجة تحليل التأمل عبر محرّك الإشارات — درجات (0-100) لكل بُعد، تُحسب عند إرسال التأمل
+    var analysisScores: [String: Int]? = nil
+
     // وسوم من تحليل الشراء (Want / Planned / One Time / Not Urgent)
     var tags: [String] = []
 

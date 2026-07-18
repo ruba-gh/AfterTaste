@@ -13,9 +13,16 @@ final class CooldownViewModel: ObservableObject {
 
     @Published var items: [CooldownItem] = []
 
+    // قواعد الإشارات تُحمّل مرة واحدة من signals.json (الباك اند)
+    private let signalRules: [Rule] = SignalLoader.loadSignals()
+
     init() {
         #if DEBUG
         items = Self.mockItems()
+        // احسب نتيجة التحليل للعناصر التجريبية في السجل حتى تظهر مباشرة عند الاختبار
+        for index in items.indices where items[index].status == .history {
+            items[index].analysisScores = analyzeReflection(items[index].reflectionText)
+        }
         #endif
     }
 
@@ -32,7 +39,7 @@ final class CooldownViewModel: ObservableObject {
             // After taste — تم شراؤه، التأمل جاهز بعد 8 ثواني
             CooldownItem(itemName: "Water Bottle", price: 15, createdAt: now.addingTimeInterval(-3600 * 30), expiresAt: now.addingTimeInterval(-3600 * 5), status: .afterTaste, reflectAt: now.addingTimeInterval(8), firstReaction: "I really wanted it after the cooldown.", tags: ["Want", "One Time"]),
             // History — انتهى التأمل
-            CooldownItem(itemName: "Notebook Set", price: 12, createdAt: now.addingTimeInterval(-3600 * 60), expiresAt: now.addingTimeInterval(-3600 * 40), status: .history, firstReaction: "It seemed useful for work.", reflectionText: "I wasn't worth the price and I haven't used it a lot.", reflectionChoice: .regret, tags: ["Want", "Planned"])
+            CooldownItem(itemName: "Notebook Set", price: 12, createdAt: now.addingTimeInterval(-3600 * 60), expiresAt: now.addingTimeInterval(-3600 * 40), status: .history, firstReaction: "It seemed useful for work.", reflectionText: "I regret it, it was too expensive and I rarely use it.", reflectionChoice: .regret, tags: ["Want", "Planned"])
         ]
     }
     #endif
@@ -113,7 +120,7 @@ final class CooldownViewModel: ObservableObject {
 
     // MARK: - History
 
-    /// عند إنهاء التأمل (Done): ينتقل العنصر للسجل.
+    /// عند إنهاء التأمل (Done): يحلّل النص عبر محرّك الإشارات، يخزّن الدرجات، وينقل العنصر للسجل.
     func submitReflection(
         _ item: CooldownItem,
         text: String,
@@ -125,10 +132,18 @@ final class CooldownViewModel: ObservableObject {
 
         items[index].reflectionText = text
         items[index].reflectionChoice = choice
+        items[index].analysisScores = analyzeReflection(text)
         items[index].status = .history
     }
 
     var historyItems: [CooldownItem] {
         items.filter { $0.status == .history }
+    }
+
+    /// يشغّل الباك اند: نص (عربي/إنجليزي) → مطابقة إشارات → درجات 0-100 لكل بُعد.
+    private func analyzeReflection(_ text: String) -> [String: Int] {
+        let matches = SignalMatcher.match(text: text, against: signalRules)
+        let totals = SignalMatcher.aggregateByCategory(matches)
+        return PurchaseProfileScorer.score(from: totals)
     }
 }

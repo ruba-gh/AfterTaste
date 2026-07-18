@@ -12,6 +12,11 @@ struct HistoryView: View {
     @EnvironmentObject var viewModel: CooldownViewModel
     @State private var selectedItem: CooldownItem?
 
+    // ترتيب عرض الأبعاد الأربعة الناتجة عن محرّك الإشارات
+    static let orderedDimensions = [
+        "emotional_satisfaction", "practical_usefulness", "impulse_level", "value_for_money"
+    ]
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
@@ -195,6 +200,21 @@ struct HistoryDetailSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .padding(.top, 8)
 
+                // تحليل التأمل (من محرّك الإشارات)
+                if let scores = item.analysisScores, !scores.isEmpty {
+                    Text("Reflection analysis")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.55))
+                        .padding(.top, 18)
+
+                    VStack(spacing: 14) {
+                        ForEach(HistoryView.orderedDimensions.filter { scores[$0] != nil }, id: \.self) { dim in
+                            DimensionRow(dimension: dim, value: scores[dim] ?? 50)
+                        }
+                    }
+                    .padding(.top, 10)
+                }
+
                 Spacer()
 
                 Button {
@@ -217,6 +237,77 @@ struct HistoryDetailSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
         .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Dimension Row (Reflection analysis)
+
+struct DimensionRow: View {
+    let dimension: String
+    let value: Int
+
+    private var isPositive: Bool { value >= 50 }
+
+    // شدّة التأثير بناءً على البعد عن المنتصف (50)
+    private var strength: String {
+        let distance = abs(value - 50)
+        if distance >= 30 { return "Strong" }
+        if distance >= 15 { return "Moderate" }
+        return "Weak"
+    }
+
+    private var displayName: String {
+        switch dimension {
+        case "emotional_satisfaction": return "Emotional satisfaction"
+        case "practical_usefulness":   return "Practical usefulness"
+        case "impulse_level":          return "Impulsiveness"
+        case "value_for_money":        return "Value for money"
+        default:                       return dimension.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(displayName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text(isPositive ? "Positive" : "Negative")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isPositive
+                        ? Color(red: 0.45, green: 0.80, blue: 0.55)
+                        : Color(red: 0.90, green: 0.45, blue: 0.32))
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.10))
+                        .frame(height: 6)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color("Color"),
+                                    Color(red: 0.89, green: 0.44, blue: 0.30)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(6, geo.size.width * CGFloat(value) / 100), height: 6)
+                }
+            }
+            .frame(height: 6)
+
+            Text(strength)
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.45))
+        }
     }
 }
 

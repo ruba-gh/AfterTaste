@@ -51,14 +51,7 @@ struct CooldownView: View {
                         HistoryView()
 
                     case "Drafts":
-<<<<<<< HEAD
-                        // صفحة Drafts (تُبنى لاحقاً)
-                        ScrollView(.vertical, showsIndicators: false) {
-                            placeholderContent(for: "Drafts")
-                        }
-=======
                         DraftsView()
->>>>>>> main
 
                     default:
                         EmptyView()
@@ -126,20 +119,6 @@ struct CooldownView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 100) // أمان للـ Bottom Bar
-    }
-
-    private func placeholderContent(for tab: String) -> some View {
-        VStack(spacing: 8) {
-            Text("\(tab)")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
-
-            Text("Coming soon")
-                .font(.system(size: 13))
-                .foregroundColor(.darkGrayText)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 120)
     }
 
     // MARK: - Subviews المجهزة من الفيجما
