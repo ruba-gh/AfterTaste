@@ -32,6 +32,37 @@ struct PurchaseResult: View {
         return max(0, Int(seconds.rounded()))
     }
 
+    // MARK: - Cost per unit (use/day/month/year)
+    private var costPerUnitText: String? {
+        // نحاول تحويل lifeExpectancy إلى رقم
+        let count = Double(viewModel.lifeExpectancy.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        guard count > 0 else { return nil }
+
+        let price = viewModel.numericPrice
+        guard price > 0 else { return nil }
+
+        switch viewModel.lifeExpectancyUnit {
+        case "times":
+            let perUse = price / count
+            return String(format: "≈ $%.2f per use", perUse)
+
+        case "days":
+            let perDay = price / count
+            return String(format: "≈ $%.2f per day", perDay)
+
+        case "months":
+            let perMonth = price / count
+            return String(format: "≈ $%.2f per month", perMonth)
+
+        case "years":
+            let perYear = price / count
+            return String(format: "≈ $%.2f per year", perYear)
+
+        default:
+            return nil
+        }
+    }
+
     var body: some View {
         ZStack {
             Color.black
@@ -142,7 +173,7 @@ struct PurchaseResult: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 18)
 
-            lifeExpectancyRow
+            lifeExpectancySection
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
 
@@ -332,14 +363,27 @@ struct PurchaseResult: View {
         )
     }
 
-    // MARK: - Life Expectancy
+    // MARK: - Life Expectancy + Cost per unit
+
+    private var lifeExpectancySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            lifeExpectancyRow
+
+            if let text = costPerUnitText {
+                Text(text)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.75))
+                    .padding(.horizontal, 4)
+            }
+        }
+    }
 
     private var lifeExpectancyRow: some View {
         HStack(spacing: 12) {
             TextField(
                 "",
                 text: $viewModel.lifeExpectancy,
-                prompt: Text("Life expectation")
+                prompt: Text("How long will you use it/ how many times?")
                     .foregroundStyle(.white.opacity(0.5))
             )
             .keyboardType(.decimalPad)
@@ -391,7 +435,7 @@ struct PurchaseResult: View {
                 didFinishPurchase = true
 
                 cooldownViewModel.addItem(
-                    name: viewModel.itemName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    name: viewModel.resultTitle,
                     price: viewModel.resultPrice,
                     cooldownHours: 24
                 )

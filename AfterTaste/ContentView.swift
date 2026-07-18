@@ -141,9 +141,24 @@ private struct PlaceholderScreen: View {
 
 // MARK: - Preview
 
-#Preview {
+#Preview("App - Default") {
     ContentView()
-        .environmentObject(
-            CooldownViewModel()
-        )
+        .environmentObject(CooldownViewModel())
+}
+
+#Preview("Quick Test - Result with running timer") {
+    // إعداد ViewModel للاختبار السريع بحيث يشتغل العداد فوراً
+    let vm = PurchaseViewModel()
+    vm.itemName = "Test Item"
+    vm.price = "120"        // سعر المنتج
+    vm.hourlyRate = 30      // الراتب بالساعة => الزمن المطلوب = 4 ساعات
+    vm.purchaseType = .planned
+    vm.paymentType = .oneTime
+    vm.purchasePriority = .want
+
+    return NavigationStack {
+        PurchaseResult(viewModel: vm)
+    }
+    .environmentObject(CooldownViewModel())
+    .environmentObject(DraftStore())
 }
