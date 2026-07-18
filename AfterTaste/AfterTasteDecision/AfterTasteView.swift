@@ -1,4 +1,4 @@
-  //
+//
 //  AfterTasteView.swift
 //  AfterTaste
 //
@@ -13,6 +13,7 @@ struct AfterTasteView: View {
     @State private var selectedItem: CooldownItem?
     @State private var reflectionText: String = ""
     @State private var reflectionChoice: ReflectionChoice?
+    @State private var showAnalysis = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -38,10 +39,19 @@ struct AfterTasteView: View {
             }
         }
         .sheet(item: $selectedItem) { item in
-            reflectionSheet(item: item)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(32)
+            NavigationStack {
+                reflectionSheet(item: item)
+                    .navigationDestination(isPresented: $showAnalysis) {
+                        ReflectionAnalysisView(
+                            item: item,
+                            reflectionText: reflectionText,
+                            choice: reflectionChoice ?? .happy
+                        )
+                    }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(32)
         }
     }
 
@@ -123,6 +133,7 @@ struct AfterTasteView: View {
             Button {
                 reflectionText = ""
                 reflectionChoice = nil
+                showAnalysis = false
                 selectedItem = item
             } label: {
                 Text("Reflect")
@@ -431,7 +442,7 @@ struct AfterTasteView: View {
             text: reflectionText,
             choice: choice
         )
-        selectedItem = nil
+        showAnalysis = true
     }
 
     // MARK: - Helpers

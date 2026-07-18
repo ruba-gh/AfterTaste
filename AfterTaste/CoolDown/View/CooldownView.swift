@@ -1,4 +1,3 @@
-
 //
 //  CooldownView.swift
 //  AfterTaste
@@ -12,6 +11,7 @@ struct CooldownView: View {
     @EnvironmentObject var viewModel: CooldownViewModel
     @State private var selectedSubTab: String = "Cool down"
     @State private var selectedItem: CooldownItem?
+    @State private var showInsights = false
     
     // التبويبات الأربعة الظاهرة في الفيجما بالرأس
     let topTabs = ["Cool down", "After taste", "History", "Drafts"]
@@ -60,6 +60,9 @@ struct CooldownView: View {
             }
         }
         .navigationBarHidden(true)
+        .navigationDestination(isPresented: $showInsights) {
+            InsightsView()
+        }
         .sheet(item: $selectedItem) { item in
             DecisionSheet(item: item)
                 .environmentObject(viewModel)
@@ -126,17 +129,26 @@ struct CooldownView: View {
     private var headerSection: some View {
         HStack {
             Spacer()
-            
+
             Text("Decision")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
-                .offset(x: 12) // موازنة مع الأيقونة اليمنى ليصبح في المنتصف تماماً
-            
+
             Spacer()
-            
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 16))
-                .foregroundColor(.white)
+
+            Button {
+                showInsights = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.10))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
     

@@ -83,9 +83,7 @@ struct ContentView: View {
             // MARK: - Goals
 
             NavigationStack {
-                PlaceholderScreen(
-                    title: "Goals"
-                )
+                GoalsView()
             }
             .tabItem {
                 Image(systemName: "target")
